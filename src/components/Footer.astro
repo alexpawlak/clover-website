@@ -1,0 +1,93 @@
+---
+const currentYear = new Date().getFullYear();
+
+const footerLinks = {
+  product: [
+    { label: 'About', href: '/about' },
+    { label: 'Features', href: '/#features' },
+  ],
+  legal: [
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Terms of Service', href: '/terms' },
+  ],
+  resources: [
+    { label: 'Data Sources', href: '/about#data-sources' },
+    { label: 'Contact', href: '/about#contact' },
+  ],
+};
+---
+
+<footer class="bg-neutral-900 text-white mt-20">
+  <div class="container-custom py-12">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <!-- Brand -->
+      <div class="col-span-1 md:col-span-1">
+        <a href="/" class="flex items-center space-x-2 text-xl font-bold text-brand-pink hover:text-brand-pink-dark transition-colors">
+          <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" opacity="0.3"/>
+            <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Clover</span>
+        </a>
+        <p class="mt-4 text-sm text-neutral-300">
+          Helping parents find baby-friendly facilities wherever they go.
+        </p>
+      </div>
+
+      <!-- Product Links -->
+      <div>
+        <h3 class="font-semibold text-white mb-4">Product</h3>
+        <ul class="space-y-2">
+          {footerLinks.product.map((link) => (
+            <li>
+              <a href={link.href} class="text-sm text-neutral-300 hover:text-brand-pink transition-colors">
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <!-- Legal Links -->
+      <div>
+        <h3 class="font-semibold text-white mb-4">Legal</h3>
+        <ul class="space-y-2">
+          {footerLinks.legal.map((link) => (
+            <li>
+              <a href={link.href} class="text-sm text-neutral-300 hover:text-brand-pink transition-colors">
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <!-- Resources Links -->
+      <div>
+        <h3 class="font-semibold text-white mb-4">Resources</h3>
+        <ul class="space-y-2">
+          {footerLinks.resources.map((link) => (
+            <li>
+              <a href={link.href} class="text-sm text-neutral-300 hover:text-brand-pink transition-colors">
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="mt-12 pt-8 border-t border-neutral-800">
+      <div class="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+        <p class="text-sm text-neutral-400">
+          © {currentYear} Clover. All rights reserved.
+        </p>
+        <p class="text-sm text-neutral-400">
+          Made with ❤️ for parents everywhere
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>

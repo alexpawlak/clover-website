@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<BaseLayout 
+  title="About Clover - Baby Changing Places App"
+  description="Learn about Clover's mission to help parents find baby-friendly facilities and our commitment to building a supportive community."
+>
+  <Header />
+  
+  <main>
+    <section class="py-20 bg-gradient-to-br from-brand-pink-light/20 to-white">
+      <div class="container-custom">
+        <div class="max-w-3xl mx-auto">
+          <h1 class="text-4xl md:text-5xl font-bold text-neutral-900 mb-6">About Clover</h1>
+          <p class="text-xl text-neutral-700 leading-relaxed">
+            Making parenthood easier, one changing table at a time.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 bg-white">
+      <div class="container-custom max-w-3xl">
+        <h2 class="text-3xl font-bold text-neutral-900 mb-6">Our Mission</h2>
+        <p class="text-lg text-neutral-700 mb-4">
+          Clover was created to solve a simple but frustrating problem: finding baby-friendly facilities when you're out and about. Whether you need a changing table, nursing room, or family restroom, Clover helps you find it quickly and easily.
+        </p>
+        <p class="text-lg text-neutral-700 mb-4">
+          We believe that parents shouldn't have to stress about basic amenities. Our app brings together trusted data sources and community contributions to create the most comprehensive directory of baby-friendly places.
+        </p>
+
+        <h2 id="data-sources" class="text-3xl font-bold text-neutral-900 mb-6 mt-12">Data Sources</h2>
+        <p class="text-lg text-neutral-700 mb-4">
+          Clover combines multiple data sources to provide accurate and up-to-date information:
+        </p>
+        <ul class="list-disc list-inside text-lg text-neutral-700 space-y-2 mb-4">
+          <li><strong>Great British Public Toilet Map (GBPTM)</strong> - A comprehensive dataset of public facilities across the UK</li>
+          <li><strong>OpenStreetMap</strong> - Community-contributed geographic data</li>
+          <li><strong>User Submissions</strong> - Places added by our community of parents</li>
+        </ul>
+
+        <h2 class="text-3xl font-bold text-neutral-900 mb-6 mt-12">Community Driven</h2>
+        <p class="text-lg text-neutral-700 mb-4">
+          Clover is powered by parents helping parents. Every contribution—whether it's adding a new place, uploading a photo, or reporting outdated information—makes the app better for everyone.
+        </p>
+
+        <h2 id="contact" class="text-3xl font-bold text-neutral-900 mb-6 mt-12">Contact Us</h2>
+        <p class="text-lg text-neutral-700 mb-4">
+          Have questions, feedback, or suggestions? We'd love to hear from you.
+        </p>
+        <div class="card p-6">
+          <p class="text-neutral-700">
+            <strong>Email:</strong> <a href="mailto:alexpawlak+babymap@gmail.com" class="text-brand-pink hover:text-brand-pink-dark">alexpawlak+babymap@gmail.com</a>
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>
