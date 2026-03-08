@@ -16,7 +16,7 @@ import Footer from '../components/Footer.astro';
         <div class="max-w-3xl mx-auto">
           <h1 class="text-4xl md:text-5xl font-bold text-neutral-900 mb-4">Privacy Policy</h1>
           <p class="text-neutral-600 mb-2">iOS and Android</p>
-          <p class="text-neutral-600">Effective Date: 1 December 2025</p>
+          <p class="text-neutral-600">Effective Date: 8 March 2026</p>
         </div>
       </div>
     </section>
@@ -40,7 +40,7 @@ import Footer from '../components/Footer.astro';
             <li>Show nearby baby changing facilities</li>
           </ul>
           <p class="text-neutral-700 mb-4">
-            We do not store, track, or share your location history. Location data is used only while you're actively using the App and is not transmitted to any servers for storage.
+            We do not store, track, or share your location history on Clover servers. Location data is used only while you're actively using the App. To render nearby results and map functionality, location may be processed in transit by our map/location service integrations.
           </p>
 
           <h3 class="text-xl font-semibold text-neutral-900 mb-3 mt-6">Photos</h3>
@@ -69,12 +69,12 @@ import Footer from '../components/Footer.astro';
             <li>App version</li>
           </ul>
           <p class="text-neutral-700 mb-4">
-            This information is used solely to improve app performance and fix bugs.
+            This information is used solely for debugging, security, performance monitoring, and improving app reliability.
           </p>
 
           <h3 class="text-xl font-semibold text-neutral-900 mb-3 mt-6">Usage Data</h3>
           <p class="text-neutral-700 mb-4">
-            We may collect anonymous usage data to improve the App, such as:
+            We may collect usage data to improve the App, such as:
           </p>
           <ul class="list-disc list-inside text-neutral-700 space-y-2 mb-4">
             <li>App crashes and errors</li>
@@ -82,7 +82,7 @@ import Footer from '../components/Footer.astro';
             <li>Session duration</li>
           </ul>
           <p class="text-neutral-700 mb-4">
-            This data does not identify you personally and is aggregated for analytical purposes only.
+            Identifiable diagnostic and analytics data (including device identifiers, crash logs, and raw analytics events) is retained for up to 90 days and then anonymized and aggregated.
           </p>
 
           <h2 class="text-2xl font-bold text-neutral-900 mb-4 mt-8">How We Use Your Information</h2>
@@ -123,28 +123,91 @@ import Footer from '../components/Footer.astro';
             The App may use third-party services that may collect information:
           </p>
           <ul class="list-disc list-inside text-neutral-700 space-y-2 mb-4">
-            <li><strong>Map Providers:</strong> We use mapping services to display the map interface. These services may collect data according to their own privacy policies.</li>
-            <li><strong>Analytics:</strong> We may use analytics services to understand app usage. These services collect anonymous usage data.</li>
-            <li><strong>Cloud Storage:</strong> Photos are stored using cloud storage services, which have their own security and privacy measures.</li>
+            <li><strong>Google Play services Location (com.google.android.gms:play-services-location):</strong> Used via geolocator integration to provide location-based features while the app is in use.</li>
+            <li><strong>Android photo integrations (image picker and FileProvider components):</strong> Used to let you capture or choose photos that you explicitly submit.</li>
+            <li><strong>Cloud storage providers:</strong> Uploaded photos are stored with infrastructure providers that process data under their own security and privacy terms.</li>
           </ul>
           <p class="text-neutral-700 mb-6">
             These third-party services have their own privacy policies governing their use of data. We recommend reviewing their policies.
           </p>
 
           <h2 class="text-2xl font-bold text-neutral-900 mb-4 mt-8">Data Retention</h2>
+          <p class="text-neutral-700 mb-4">
+            We apply a data minimization and limited-retention model for iOS and Android:
+          </p>
+          <div class="overflow-x-auto mb-6">
+            <table class="w-full text-left text-neutral-700 border border-neutral-200 rounded-lg overflow-hidden">
+              <thead class="bg-neutral-100">
+                <tr>
+                  <th class="px-4 py-3 font-semibold">Data</th>
+                  <th class="px-4 py-3 font-semibold">Retention</th>
+                  <th class="px-4 py-3 font-semibold">After retention</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-t border-neutral-200">
+                  <td class="px-4 py-3">Location</td>
+                  <td class="px-4 py-3">Not stored</td>
+                  <td class="px-4 py-3">Not applicable</td>
+                </tr>
+                <tr class="border-t border-neutral-200">
+                  <td class="px-4 py-3">Crash logs</td>
+                  <td class="px-4 py-3">90 days</td>
+                  <td class="px-4 py-3">Deleted</td>
+                </tr>
+                <tr class="border-t border-neutral-200">
+                  <td class="px-4 py-3">Device identifiers</td>
+                  <td class="px-4 py-3">90 days</td>
+                  <td class="px-4 py-3">Removed</td>
+                </tr>
+                <tr class="border-t border-neutral-200">
+                  <td class="px-4 py-3">Raw analytics events</td>
+                  <td class="px-4 py-3">90 days</td>
+                  <td class="px-4 py-3">Anonymized and aggregated</td>
+                </tr>
+                <tr class="border-t border-neutral-200">
+                  <td class="px-4 py-3">Aggregated analytics</td>
+                  <td class="px-4 py-3">Unlimited</td>
+                  <td class="px-4 py-3">Anonymous statistics</td>
+                </tr>
+                <tr class="border-t border-neutral-200">
+                  <td class="px-4 py-3">User photos</td>
+                  <td class="px-4 py-3">Until deletion request</td>
+                  <td class="px-4 py-3">User-controlled</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="text-xl font-semibold text-neutral-900 mb-3 mt-6">Usage Data Retention</h3>
+          <p class="text-neutral-700 mb-4">
+            We retain identifiable diagnostic and analytics data (such as crash logs, device identifiers, and usage events) for up to <strong>90 days</strong> for debugging, security, and performance monitoring purposes.
+          </p>
+          <p class="text-neutral-700 mb-4">
+            After this period, the data is anonymized and aggregated. This means identifiers such as device identifiers, IP addresses, and session identifiers are removed so the data can no longer be associated with an individual user or device.
+          </p>
+          <p class="text-neutral-700 mb-6">
+            Anonymous aggregated statistics may be retained indefinitely to help us improve the functionality and performance of the App.
+          </p>
+
+          <h3 class="text-xl font-semibold text-neutral-900 mb-3 mt-6">How We Anonymize Analytics Data</h3>
+          <p class="text-neutral-700 mb-4">
+            Our internal retention rule is:
+          </p>
           <ul class="list-disc list-inside text-neutral-700 space-y-2 mb-6">
-            <li>Location data is not stored after you close the App</li>
-            <li>Photos are stored indefinitely unless you request deletion</li>
-            <li>Anonymous usage data is retained for analytical purposes</li>
-            <li>Device crash logs are retained for up to 90 days</li>
+            <li>Raw logs retention: 90 days</li>
+            <li>After 90 days: remove device identifiers</li>
+            <li>After 90 days: remove IP addresses and session identifiers</li>
+            <li>After 90 days: aggregate analytics and keep only statistical metrics</li>
           </ul>
 
           <h2 class="text-2xl font-bold text-neutral-900 mb-4 mt-8">Data Security</h2>
           <p class="text-neutral-700 mb-4">
-            We use industry-standard security measures to protect your data, including:
+            We use specific technical and organizational safeguards to protect your data, including:
           </p>
           <ul class="list-disc list-inside text-neutral-700 space-y-2 mb-4">
             <li>Encrypted data transmission (HTTPS/TLS)</li>
+            <li>Restricted access controls for stored data</li>
             <li>Secure server storage for photos</li>
             <li>Regular security audits</li>
           </ul>
@@ -195,7 +258,7 @@ import Footer from '../components/Footer.astro';
           </p>
           <ol class="list-decimal list-inside text-neutral-700 space-y-2 mb-6">
             <li>Contact us at the email below with "Data Deletion Request" in the subject line</li>
-            <li>Include your device identifier (if known) or description of the photos you uploaded</li>
+            <li>Include any details you have, such as a description of uploaded photos, place name/city, and approximate upload date (device identifier is optional if known)</li>
             <li>We will process your request within 30 days</li>
           </ol>
 
@@ -204,8 +267,12 @@ import Footer from '../components/Footer.astro';
             For Android users, please note:
           </p>
           <ul class="list-disc list-inside text-neutral-700 space-y-2 mb-6">
-            <li>Location data is not shared with third parties</li>
+            <li>Location data is never stored and is only used during active app sessions</li>
             <li>Photos are collected and shared publicly within the app</li>
+            <li>Crash logs, device identifiers, and raw analytics events are retained for a maximum of 90 days</li>
+            <li>After 90 days, identifiers are removed and analytics is retained only as anonymous aggregated statistics</li>
+            <li>The app does not collect Advertising ID (AAID)</li>
+            <li>The app does not include ad or marketing SDKs such as Google Ads, Firebase Analytics, Facebook SDK, AppsFlyer, OneSignal, or Sentry in the current Android configuration</li>
             <li>No data is used for advertising or marketing purposes</li>
             <li>Data collection is optional (you can use the app without sharing location or photos for viewing purposes only)</li>
           </ul>
