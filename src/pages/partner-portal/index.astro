@@ -373,15 +373,13 @@ function formatDate(iso: string | null) {
       .place-picker input[type="text"]:focus { border-color: #E91E63; }
       .place-dropdown {
         display: none;
-        position: absolute;
-        top: calc(100% + 4px);
-        left: 0; right: 0;
+        position: fixed;
         background: white;
         border: 1.5px solid #E5E7EB;
         border-radius: 0.5rem;
         max-height: 220px;
         overflow-y: auto;
-        z-index: 200;
+        z-index: 400;
         list-style: none;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       }
@@ -639,6 +637,12 @@ function formatDate(iso: string | null) {
           ? allPlaces
           : allPlaces.filter(p => p.label.toLowerCase().includes(q));
         placeDropdown.innerHTML = '';
+
+        // Position fixed so it escapes the modal's overflow clipping
+        const rect = placeSearch.getBoundingClientRect();
+        placeDropdown.style.top = `${rect.bottom + 4}px`;
+        placeDropdown.style.left = `${rect.left}px`;
+        placeDropdown.style.width = `${rect.width}px`;
         if (matches.length === 0) {
           const li = document.createElement('li');
           li.className = 'no-results';
