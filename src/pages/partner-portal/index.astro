@@ -27,11 +27,10 @@ const { data: partners } = await supabaseAdmin
   .select('id, name')
   .order('name');
 
-// Load approved places (for Add Offer form — select which place)
+// Load all places (for Add Offer form — select which place)
 const { data: places } = await supabaseAdmin
   .from('places')
   .select('id, name, city')
-  .eq('status', 'approved')
   .order('name');
 
 // Group offers by partner
@@ -357,6 +356,46 @@ function formatDate(iso: string | null) {
       }
       .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
 
+      /* ── Searchable place picker ── */
+      .place-picker { position: relative; }
+      .place-picker input[type="text"] {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        color: #111827;
+        outline: none;
+        font-family: inherit;
+        transition: border-color 0.15s;
+        background: white;
+      }
+      .place-picker input[type="text"]:focus { border-color: #E91E63; }
+      .place-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0; right: 0;
+        background: white;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 0.5rem;
+        max-height: 220px;
+        overflow-y: auto;
+        z-index: 200;
+        list-style: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+      .place-dropdown.open { display: block; }
+      .place-dropdown li {
+        padding: 0.6rem 0.875rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+        color: #111827;
+      }
+      .place-dropdown li:hover, .place-dropdown li.highlighted { background: #FFF0F6; }
+      .place-dropdown li.no-results { color: #9CA3AF; cursor: default; }
+      .place-dropdown li.no-results:hover { background: none; }
+
       /* ── No partners ── */
       .no-partners {
         background: white;
@@ -476,13 +515,12 @@ function formatDate(iso: string | null) {
             </select>
           </div>
           <div class="field">
-            <label for="f-place">Place (POI) *</label>
-            <select id="f-place" name="place_id" required>
-              <option value="">Select place…</option>
-              {(places ?? []).map((pl: { id: string; name: string; city: string | null }) => (
-                <option value={pl.id}>{pl.name}{pl.city ? ` — ${pl.city}` : ''}</option>
-              ))}
-            </select>
+            <label for="f-place-search">Place (POI) *</label>
+            <div class="place-picker" id="place-picker">
+              <input type="text" id="f-place-search" placeholder="Search places…" autocomplete="off" />
+              <input type="hidden" id="f-place" name="place_id" required />
+              <ul class="place-dropdown" id="place-dropdown" role="listbox"></ul>
+            </div>
           </div>
           <div class="field">
             <label for="f-desc">Description *</label>
@@ -532,6 +570,13 @@ function formatDate(iso: string | null) {
     <!-- Toast -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+    <script type="application/json" id="places-data">
+      {JSON.stringify((places ?? []).map((pl: { id: string; name: string; city: string | null }) => ({
+        id: pl.id,
+        label: pl.name + (pl.city ? ` — ${pl.city}` : ''),
+      })))}
+    </script>
+
     <script>
       // ── Collapse/expand partner cards ──
       // @ts-ignore — called from inline onclick attributes
@@ -554,14 +599,70 @@ function formatDate(iso: string | null) {
         document.getElementById('modal-backdrop')!.classList.add('open');
         (document.getElementById('f-partner') as HTMLSelectElement).focus();
       }
-      function closeModal() {
+      // @ts-ignore — called from inline onclick attributes
+      window.closeModal = function closeModal() {
         document.getElementById('modal-backdrop')!.classList.remove('open');
         (document.getElementById('add-offer-form') as HTMLFormElement).reset();
       }
       document.getElementById('open-modal-btn')!.addEventListener('click', openModal);
       document.getElementById('modal-backdrop')!.addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeModal();
+        if (e.target === e.currentTarget) (window as any).closeModal();
       });
+
+      // ── Place search ──
+      const allPlaces: { id: string; label: string }[] = JSON.parse(
+        document.getElementById('places-data')!.textContent!
+      );
+      const placeSearch = document.getElementById('f-place-search') as HTMLInputElement;
+      const placeHidden = document.getElementById('f-place') as HTMLInputElement;
+      const placeDropdown = document.getElementById('place-dropdown') as HTMLUListElement;
+
+      function renderPlaceDropdown(query: string) {
+        const q = query.toLowerCase();
+        const matches = q.length === 0
+          ? allPlaces
+          : allPlaces.filter(p => p.label.toLowerCase().includes(q));
+        placeDropdown.innerHTML = '';
+        if (matches.length === 0) {
+          const li = document.createElement('li');
+          li.className = 'no-results';
+          li.textContent = 'No places found';
+          placeDropdown.appendChild(li);
+        } else {
+          matches.forEach(p => {
+            const li = document.createElement('li');
+            li.textContent = p.label;
+            li.setAttribute('role', 'option');
+            li.addEventListener('mousedown', (e) => {
+              e.preventDefault(); // prevent blur before click
+              placeSearch.value = p.label;
+              placeHidden.value = p.id;
+              placeDropdown.classList.remove('open');
+            });
+            placeDropdown.appendChild(li);
+          });
+        }
+        placeDropdown.classList.add('open');
+      }
+
+      placeSearch.addEventListener('input', () => {
+        placeHidden.value = '';
+        renderPlaceDropdown(placeSearch.value);
+      });
+      placeSearch.addEventListener('focus', () => renderPlaceDropdown(placeSearch.value));
+      placeSearch.addEventListener('blur', () => {
+        setTimeout(() => placeDropdown.classList.remove('open'), 150);
+      });
+
+      // Reset place picker when modal closes
+      const _origCloseModal = (window as any).closeModal as () => void;
+      // @ts-ignore
+      window.closeModal = function closeModal() {
+        placeSearch.value = '';
+        placeHidden.value = '';
+        placeDropdown.classList.remove('open');
+        _origCloseModal();
+      }
 
       // ── Toast ──
       function showToast(msg: string) {
@@ -668,7 +769,7 @@ function formatDate(iso: string | null) {
         submitBtn.disabled = false;
 
         if (res.ok) {
-          closeModal();
+          (window as any).closeModal();
           showToast('Offer added — refresh to see it in the list');
         } else {
           const body = await res.json().catch(() => ({}));
