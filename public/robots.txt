@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /partner-portal/
+Disallow: /api/
 
 Sitemap: https://clover-babymap.netlify.app/sitemap.xml
