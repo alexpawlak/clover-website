@@ -68,6 +68,19 @@ function formatDate(iso: string | null) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+// Prepare data for client-side place picker
+const allPlacesData = (places ?? []).map(pl => ({
+  id: pl.id,
+  label: pl.name + (pl.city ? ` \u2014 ${pl.city}` : ''),
+}));
+
+const placePartnerMapData: Record<string, { id: number; name: string }> = {};
+for (const row of offerRows) {
+  if (row.place && row.partner && !placePartnerMapData[row.place.id]) {
+    placePartnerMapData[row.place.id] = { id: row.partner.id, name: row.partner.name };
+  }
+}
 ---
 
 <!doctype html>
@@ -216,7 +229,7 @@ function formatDate(iso: string | null) {
       .badge-paused { background: #F3F4F6; color: #6B7280; }
 
       /* ── Action buttons ── */
-      .offer-actions { display: flex; flex-direction: column; gap: 0.375rem; flex-shrink: 0; }
+      .offer-actions { display: flex; flex-direction: column; gap: 0.375rem; flex-shrink: 0; align-items: flex-start; }
       .act-btn {
         border: 1.5px solid #E5E7EB;
         background: white;
@@ -568,23 +581,9 @@ function formatDate(iso: string | null) {
     <!-- Toast -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script type="application/json" id="places-data">
-      {JSON.stringify((places ?? []).map((pl: { id: string; name: string; city: string | null }) => ({
-        id: pl.id,
-        label: pl.name + (pl.city ? ` — ${pl.city}` : ''),
-      })))}
-    </script>
-
-    <script type="application/json" id="place-partner-map">
-      {JSON.stringify((() => {
-        const map: Record<string, { id: number; name: string }> = {};
-        for (const row of offerRows) {
-          if (row.place && row.partner && !map[row.place.id]) {
-            map[row.place.id] = { id: row.partner.id, name: row.partner.name };
-          }
-        }
-        return map;
-      })())}
+    <script is:inline define:vars={{ allPlacesData, placePartnerMapData }}>
+      window.__allPlaces = allPlacesData;
+      window.__placePartnerMap = placePartnerMapData;
     </script>
 
     <script>
@@ -620,12 +619,9 @@ function formatDate(iso: string | null) {
       });
 
       // ── Place search ──
-      const allPlaces: { id: string; label: string }[] = JSON.parse(
-        document.getElementById('places-data')!.textContent!
-      );
-      const placePartnerMap: Record<string, { id: number; name: string }> = JSON.parse(
-        document.getElementById('place-partner-map')!.textContent!
-      );
+      const allPlaces: { id: string; label: string }[] = (window as any).__allPlaces ?? [];
+      const placePartnerMap: Record<string, { id: number; name: string }> = (window as any).__placePartnerMap ?? {};
+      console.log('[Partner Portal] Places loaded:', allPlaces.length);
       const placeSearch = document.getElementById('f-place-search') as HTMLInputElement;
       const placeHidden = document.getElementById('f-place') as HTMLInputElement;
       const placeDropdown = document.getElementById('place-dropdown') as HTMLUListElement;
