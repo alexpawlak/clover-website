@@ -577,6 +577,18 @@ function formatDate(iso: string | null) {
       })))}
     </script>
 
+    <script type="application/json" id="place-partner-map">
+      {JSON.stringify((() => {
+        const map: Record<string, { id: number; name: string }> = {};
+        for (const row of offerRows) {
+          if (row.place && row.partner && !map[row.place.id]) {
+            map[row.place.id] = { id: row.partner.id, name: row.partner.name };
+          }
+        }
+        return map;
+      })())}
+    </script>
+
     <script>
       // ── Collapse/expand partner cards ──
       // @ts-ignore — called from inline onclick attributes
@@ -613,9 +625,13 @@ function formatDate(iso: string | null) {
       const allPlaces: { id: string; label: string }[] = JSON.parse(
         document.getElementById('places-data')!.textContent!
       );
+      const placePartnerMap: Record<string, { id: number; name: string }> = JSON.parse(
+        document.getElementById('place-partner-map')!.textContent!
+      );
       const placeSearch = document.getElementById('f-place-search') as HTMLInputElement;
       const placeHidden = document.getElementById('f-place') as HTMLInputElement;
       const placeDropdown = document.getElementById('place-dropdown') as HTMLUListElement;
+      const partnerSelect = document.getElementById('f-partner') as HTMLSelectElement;
 
       function renderPlaceDropdown(query: string) {
         const q = query.toLowerCase();
@@ -638,6 +654,11 @@ function formatDate(iso: string | null) {
               placeSearch.value = p.label;
               placeHidden.value = p.id;
               placeDropdown.classList.remove('open');
+              // Auto-fill partner if this place has a known partner
+              const knownPartner = placePartnerMap[p.id];
+              if (knownPartner) {
+                partnerSelect.value = String(knownPartner.id);
+              }
             });
             placeDropdown.appendChild(li);
           });
