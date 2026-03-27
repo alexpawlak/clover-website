@@ -32,14 +32,27 @@ export function clearAuthCookies(cookies: AstroCookies) {
   cookies.delete(REFRESH_COOKIE, { path: '/' });
 }
 
-/** Verify the access token cookie and return the user, or null if invalid */
+/** Verify the access token cookie and return the user, or null if invalid.
+ *  If the access token is expired but the refresh token is valid, silently
+ *  refreshes the session and updates the cookies with the new tokens. */
 export async function getUser(cookies: AstroCookies) {
   const accessToken = cookies.get(ACCESS_COOKIE)?.value;
   if (!accessToken) return null;
 
   const { data, error } = await supabaseAuth.auth.getUser(accessToken);
-  if (error || !data.user) return null;
-  return data.user;
+  if (!error && data.user) return data.user;
+
+  // Access token expired — attempt silent refresh
+  const refreshToken = cookies.get(REFRESH_COOKIE)?.value;
+  if (!refreshToken) return null;
+
+  const { data: refreshData, error: refreshError } = await supabaseAuth.auth.refreshSession({
+    refresh_token: refreshToken,
+  });
+  if (refreshError || !refreshData.session) return null;
+
+  setAuthCookies(cookies, refreshData.session.access_token, refreshData.session.refresh_token);
+  return refreshData.user;
 }
 
 /** Require auth — returns user or redirects to login */
