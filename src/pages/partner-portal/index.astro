@@ -732,28 +732,31 @@ const allPlacesData = (places ?? []).map(pl => ({
       // ── Toggle active/pause ──
       // @ts-ignore — called from inline onclick attributes
       window.toggleActive = async function toggleActive(offerId: number, active: boolean) {
-        const res = await fetch(`/api/partner-portal/offers/${offerId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ active }),
-        });
-        if (res.ok) {
-          showToast(active ? 'Offer activated' : 'Offer paused');
-          // Update UI without full reload
-          const row = document.getElementById(`offer-${offerId}`);
-          if (row) {
-            const badge = row.querySelector('.badge')!;
-            badge.className = `badge ${active ? 'badge-active' : 'badge-paused'}`;
-            badge.textContent = active ? 'Active' : 'Paused';
-            const btn = row.querySelector('.act-btn.pause, .act-btn.activate') as HTMLButtonElement;
-            if (btn) {
-              btn.className = `act-btn ${active ? 'pause' : 'activate'}`;
-              btn.textContent = active ? 'Pause' : 'Activate';
-              btn.setAttribute('onclick', `toggleActive(${offerId}, ${!active})`);
+        try {
+          const res = await fetch(`/api/partner-portal/offers/${offerId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active }),
+          });
+          if (res.ok) {
+            showToast(active ? 'Offer activated' : 'Offer paused');
+            const row = document.getElementById(`offer-${offerId}`);
+            if (row) {
+              const badge = row.querySelector('.badge')!;
+              badge.className = `badge ${active ? 'badge-active' : 'badge-paused'}`;
+              badge.textContent = active ? 'Active' : 'Paused';
+              const btn = row.querySelector('.act-btn.pause, .act-btn.activate') as HTMLButtonElement;
+              if (btn) {
+                btn.className = `act-btn ${active ? 'pause' : 'activate'}`;
+                btn.textContent = active ? 'Pause' : 'Activate';
+                btn.setAttribute('onclick', `toggleActive(${offerId}, ${!active})`);
+              }
             }
+          } else {
+            showToast('Could not update offer. Please try again.');
           }
-        } else {
-          showToast('Something went wrong. Please try again.');
+        } catch {
+          showToast('Network error. Please check your connection and try again.');
         }
       }
 
@@ -781,13 +784,17 @@ const allPlacesData = (places ?? []).map(pl => ({
 
         // Second click: do delete
         pendingRemove.delete(offerId);
-        const res = await fetch(`/api/partner-portal/offers/${offerId}`, { method: 'DELETE' });
-        if (res.ok) {
-          const row = document.getElementById(`offer-${offerId}`);
-          row?.remove();
-          showToast('Offer removed');
-        } else {
-          showToast('Something went wrong. Please try again.');
+        try {
+          const res = await fetch(`/api/partner-portal/offers/${offerId}`, { method: 'DELETE' });
+          if (res.ok) {
+            const row = document.getElementById(`offer-${offerId}`);
+            row?.remove();
+            showToast('Offer removed');
+          } else {
+            showToast('Could not remove offer. Please try again.');
+          }
+        } catch {
+          showToast('Network error. Please check your connection and try again.');
         }
       }
 
@@ -795,7 +802,14 @@ const allPlacesData = (places ?? []).map(pl => ({
       document.getElementById('add-offer-form')!.addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
-        const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+
+        // Explicit place validation (hidden input required= is unreliable cross-browser)
+        if (!placeHidden.value) {
+          showToast('Please select a place from the dropdown.');
+          placeSearch.focus();
+          return;
+        }
+
         submitBtn.textContent = 'Adding…';
         submitBtn.disabled = true;
 
@@ -803,28 +817,33 @@ const allPlacesData = (places ?? []).map(pl => ({
         new FormData(form).forEach((val, key) => {
           const s = val.toString().trim();
           if (s === '') { data[key] = null; return; }
-          if (key === 'partner_id' || key === 'max_per_family') {
+          if (key === 'max_per_family') {
             data[key] = Number(s);
           } else {
             data[key] = s;
           }
         });
 
-        const res = await fetch('/api/partner-portal/offers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
+        try {
+          const res = await fetch('/api/partner-portal/offers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          });
 
-        submitBtn.textContent = 'Add Offer';
-        submitBtn.disabled = false;
-
-        if (res.ok) {
-          (window as any).closeModal();
-          showToast('Offer added — refresh to see it in the list');
-        } else {
-          const body = await res.json().catch(() => ({}));
-          showToast(body.error ?? 'Something went wrong. Please try again.');
+          if (res.ok) {
+            (window as any).closeModal();
+            showToast('Offer added!');
+            setTimeout(() => window.location.reload(), 1200);
+          } else {
+            const body = await res.json().catch(() => ({}));
+            showToast(body.error ?? 'Could not add offer. Please try again.');
+          }
+        } catch {
+          showToast('Network error. Please check your connection and try again.');
+        } finally {
+          submitBtn.textContent = 'Add Offer';
+          submitBtn.disabled = false;
         }
       });
     </script>
