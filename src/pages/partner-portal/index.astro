@@ -530,6 +530,7 @@ for (const row of offerRows) {
             <div class="place-picker" id="place-picker">
               <input type="text" id="f-place-search" placeholder="Search places…" autocomplete="off" />
               <input type="hidden" id="f-place" name="place_id" required />
+              <div id="f-place-loading" style="display:none;font-size:0.8rem;color:#9CA3AF;margin-top:0.25rem;">Saving place…</div>
               <ul class="place-dropdown" id="place-dropdown" role="listbox"></ul>
             </div>
           </div>
@@ -619,45 +620,98 @@ for (const row of offerRows) {
       });
 
       // ── Place search ──
-      const allPlaces: { id: string; label: string }[] = (window as any).__allPlaces ?? [];
+      type PlaceOption = { id: string; label: string; source: 'supabase' | 'gbptm'; gbptm?: { lat: number; lon: number; town?: string; address1?: string; postcode?: string } };
+      const supabasePlaces: PlaceOption[] = ((window as any).__allPlaces ?? []).map((p: { id: string; label: string }) => ({ ...p, source: 'supabase' as const }));
       const placePartnerMap: Record<string, { id: number; name: string }> = (window as any).__placePartnerMap ?? {};
-      console.log('[Partner Portal] Places loaded:', allPlaces.length);
+
       const placeSearch = document.getElementById('f-place-search') as HTMLInputElement;
       const placeHidden = document.getElementById('f-place') as HTMLInputElement;
+      const placeLoading = document.getElementById('f-place-loading') as HTMLDivElement;
       const placeDropdown = document.getElementById('place-dropdown') as HTMLUListElement;
       const partnerSelect = document.getElementById('f-partner') as HTMLSelectElement;
+      const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
 
-      function renderPlaceDropdown(query: string) {
-        const q = query.toLowerCase();
-        const matches = q.length === 0
-          ? allPlaces
-          : allPlaces.filter(p => p.label.toLowerCase().includes(q));
-        placeDropdown.innerHTML = '';
+      // GBPTM data lazy-loaded on first search
+      let gbptmPlaces: PlaceOption[] = [];
+      let gbptmLoaded = false;
+      async function loadGbptm() {
+        if (gbptmLoaded) return;
+        gbptmLoaded = true;
+        try {
+          const raw: { id: string; name: string; lat: number; lon: number; town?: string; address1?: string; postcode?: string }[] =
+            await fetch('/data/gbptm-places.json').then(r => r.json());
+          gbptmPlaces = raw.map(p => ({
+            id: p.id,
+            label: p.name + (p.town ? ` \u2014 ${p.town}` : ''),
+            source: 'gbptm' as const,
+            gbptm: { lat: p.lat, lon: p.lon, town: p.town, address1: p.address1, postcode: p.postcode },
+          }));
+        } catch {
+          // silently ignore — portal still works with just Supabase places
+        }
+      }
 
-        // Position fixed so it escapes the modal's overflow clipping
+      function positionDropdown() {
         const rect = placeSearch.getBoundingClientRect();
         placeDropdown.style.top = `${rect.bottom + 4}px`;
         placeDropdown.style.left = `${rect.left}px`;
         placeDropdown.style.width = `${rect.width}px`;
+      }
+
+      function renderPlaceDropdown(query: string) {
+        const q = query.toLowerCase().trim();
+        const pool = q.length >= 2 ? [...supabasePlaces, ...gbptmPlaces] : supabasePlaces;
+        const matches = q.length === 0
+          ? supabasePlaces
+          : pool.filter(p => p.label.toLowerCase().includes(q)).slice(0, 50);
+
+        placeDropdown.innerHTML = '';
+        positionDropdown();
+
         if (matches.length === 0) {
           const li = document.createElement('li');
           li.className = 'no-results';
-          li.textContent = 'No places found';
+          li.textContent = q.length < 2 ? 'Type at least 2 characters to search all places…' : 'No places found';
           placeDropdown.appendChild(li);
         } else {
           matches.forEach(p => {
             const li = document.createElement('li');
             li.textContent = p.label;
             li.setAttribute('role', 'option');
-            li.addEventListener('mousedown', (e) => {
-              e.preventDefault(); // prevent blur before click
+            li.addEventListener('mousedown', async (e) => {
+              e.preventDefault();
               placeSearch.value = p.label;
-              placeHidden.value = p.id;
               placeDropdown.classList.remove('open');
-              // Auto-fill partner if this place has a known partner
-              const knownPartner = placePartnerMap[p.id];
-              if (knownPartner) {
-                partnerSelect.value = String(knownPartner.id);
+
+              if (p.source === 'supabase') {
+                placeHidden.value = p.id;
+                const knownPartner = placePartnerMap[p.id];
+                if (knownPartner) partnerSelect.value = String(knownPartner.id);
+              } else {
+                // Upsert GBPTM place into Supabase, get back a UUID
+                placeHidden.value = '';
+                placeLoading.style.display = 'block';
+                submitBtn.disabled = true;
+                try {
+                  const res = await fetch('/api/partner-portal/places', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gbptm_id: p.id, name: p.label.split(' \u2014 ')[0], ...p.gbptm }),
+                  });
+                  const json = await res.json();
+                  if (res.ok) {
+                    placeHidden.value = json.id;
+                  } else {
+                    showToast(json.error ?? 'Could not save place. Try again.');
+                    placeSearch.value = '';
+                  }
+                } catch {
+                  showToast('Network error saving place. Try again.');
+                  placeSearch.value = '';
+                } finally {
+                  placeLoading.style.display = 'none';
+                  submitBtn.disabled = false;
+                }
               }
             });
             placeDropdown.appendChild(li);
@@ -666,8 +720,9 @@ for (const row of offerRows) {
         placeDropdown.classList.add('open');
       }
 
-      placeSearch.addEventListener('input', () => {
+      placeSearch.addEventListener('input', async () => {
         placeHidden.value = '';
+        if (placeSearch.value.length >= 2) await loadGbptm();
         renderPlaceDropdown(placeSearch.value);
       });
       placeSearch.addEventListener('focus', () => renderPlaceDropdown(placeSearch.value));
@@ -681,6 +736,7 @@ for (const row of offerRows) {
       window.closeModal = function closeModal() {
         placeSearch.value = '';
         placeHidden.value = '';
+        placeLoading.style.display = 'none';
         placeDropdown.classList.remove('open');
         _origCloseModal();
       }
