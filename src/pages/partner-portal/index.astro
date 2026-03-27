@@ -21,12 +21,6 @@ const { data: rows, error } = await supabaseAdmin
 
 if (error) console.error('Dashboard load error:', error);
 
-// Load all partners (for Add Offer form — select which partner)
-const { data: partners } = await supabaseAdmin
-  .from('partners')
-  .select('id, name')
-  .order('name');
-
 // Load all places (for Add Offer form — select which place)
 const { data: places } = await supabaseAdmin
   .from('places')
@@ -75,12 +69,6 @@ const allPlacesData = (places ?? []).map(pl => ({
   label: pl.name + (pl.city ? ` \u2014 ${pl.city}` : ''),
 }));
 
-const placePartnerMapData: Record<string, { id: number; name: string }> = {};
-for (const row of offerRows) {
-  if (row.place && row.partner && !placePartnerMapData[row.place.id]) {
-    placePartnerMapData[row.place.id] = { id: row.partner.id, name: row.partner.name };
-  }
-}
 ---
 
 <!doctype html>
@@ -517,15 +505,6 @@ for (const row of offerRows) {
         </div>
         <form id="add-offer-form">
           <div class="field">
-            <label for="f-partner">Partner *</label>
-            <select id="f-partner" name="partner_id" required>
-              <option value="">Select partner…</option>
-              {(partners ?? []).map((p: { id: number; name: string }) => (
-                <option value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-          <div class="field">
             <label for="f-place-search">Place (POI) *</label>
             <div class="place-picker" id="place-picker">
               <input type="text" id="f-place-search" placeholder="Search places…" autocomplete="off" />
@@ -582,9 +561,8 @@ for (const row of offerRows) {
     <!-- Toast -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script is:inline define:vars={{ allPlacesData, placePartnerMapData }}>
+    <script is:inline define:vars={{ allPlacesData }}>
       window.__allPlaces = allPlacesData;
-      window.__placePartnerMap = placePartnerMapData;
     </script>
 
     <script>
@@ -622,13 +600,11 @@ for (const row of offerRows) {
       // ── Place search ──
       type PlaceOption = { id: string; label: string; source: 'supabase' | 'gbptm'; gbptm?: { lat: number; lon: number; town?: string; address1?: string; postcode?: string } };
       const supabasePlaces: PlaceOption[] = ((window as any).__allPlaces ?? []).map((p: { id: string; label: string }) => ({ ...p, source: 'supabase' as const }));
-      const placePartnerMap: Record<string, { id: number; name: string }> = (window as any).__placePartnerMap ?? {};
 
       const placeSearch = document.getElementById('f-place-search') as HTMLInputElement;
       const placeHidden = document.getElementById('f-place') as HTMLInputElement;
       const placeLoading = document.getElementById('f-place-loading') as HTMLDivElement;
       const placeDropdown = document.getElementById('place-dropdown') as HTMLUListElement;
-      const partnerSelect = document.getElementById('f-partner') as HTMLSelectElement;
       const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
 
       // GBPTM data lazy-loaded on first search
@@ -685,8 +661,6 @@ for (const row of offerRows) {
 
               if (p.source === 'supabase') {
                 placeHidden.value = p.id;
-                const knownPartner = placePartnerMap[p.id];
-                if (knownPartner) partnerSelect.value = String(knownPartner.id);
               } else {
                 // Upsert GBPTM place into Supabase, get back a UUID
                 placeHidden.value = '';
