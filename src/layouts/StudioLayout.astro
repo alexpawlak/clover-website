@@ -542,9 +542,6 @@ const studioMeta = getStudioMeta();
       .portal-meta-updated {
         color: inherit;
       }
-      .portal-meta-separator {
-        color: #D1D5DB;
-      }
       .portal-meta-updated {
         text-decoration: none;
         cursor: help;
@@ -573,14 +570,10 @@ const studioMeta = getStudioMeta();
 
     <footer class="portal-footer" aria-label="Page version information">
       <div class="portal-meta">
-        <span class="portal-meta-version">{studioMeta.versionLabel}</span>
         {studioMeta.updatedLabel && (
-          <>
-            <span class="portal-meta-separator" aria-hidden="true">•</span>
-            <span class="portal-meta-updated" title={studioMeta.updatedTooltip ?? undefined}>
-              {studioMeta.updatedLabel}
-            </span>
-          </>
+          <span class="portal-meta-updated" title={studioMeta.updatedTooltip ?? undefined}>
+            {studioMeta.updatedLabel}
+          </span>
         )}
       </div>
     </footer>
