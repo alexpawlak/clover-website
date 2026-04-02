@@ -68,6 +68,8 @@ function formatDate(iso: string | null) {
 // Prepare data for client-side place picker
 const allPlacesData = (places ?? []).map(pl => ({
   id: pl.id,
+  name: pl.name,
+  city: pl.city ?? null,
   label: pl.name + (pl.city ? ` \u2014 ${pl.city}` : ''),
 }));
 
@@ -160,6 +162,7 @@ const portalMeta = getPortalMeta();
       .topbar-left { display: flex; align-items: center; gap: 0.625rem; }
       .topbar-left img { width: 28px; height: 28px; }
       .topbar-title { font-size: 1.05rem; font-weight: 700; color: #111827; }
+      .topbar-subtitle { font-size: 0.78rem; color: #9CA3AF; }
       .signout-btn {
         background: none;
         border: 1.5px solid #E5E7EB;
@@ -174,6 +177,33 @@ const portalMeta = getPortalMeta();
 
       /* ── Main layout ── */
       .main { max-width: 820px; margin: 0 auto; padding: 1.5rem 1rem 2rem; width: 100%; flex: 1; }
+      .view-tabs {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem;
+        margin-bottom: 1rem;
+        border: 1px solid #E5E7EB;
+        border-radius: 999px;
+        background: #FFFFFF;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      }
+      .view-tab {
+        border: none;
+        background: transparent;
+        color: #6B7280;
+        border-radius: 999px;
+        padding: 0.5rem 0.95rem;
+        font-size: 0.86rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+      }
+      .view-tab.active {
+        background: #111827;
+        color: #FFFFFF;
+      }
+      .view-panel[hidden] { display: none !important; }
 
       /* ── Add offer bar ── */
       .add-bar {
@@ -462,6 +492,168 @@ const portalMeta = getPortalMeta();
         box-shadow: 0 1px 6px rgba(0,0,0,0.06);
       }
 
+      /* ── Photos manager ── */
+      .photo-manager {
+        background: #FFFFFF;
+        border-radius: 1rem;
+        padding: 1rem;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      }
+      .photo-toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.875rem;
+        margin-bottom: 1rem;
+      }
+      .photo-search-field label {
+        display: block;
+        margin-bottom: 0.4rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #374151;
+      }
+      .photo-search-picker { position: relative; }
+      .photo-search-input {
+        width: 100%;
+        padding: 0.75rem 0.875rem;
+        border: 1.5px solid #E5E7EB;
+        border-radius: 0.75rem;
+        font-size: 0.95rem;
+        color: #111827;
+        background: white;
+        outline: none;
+      }
+      .photo-search-input:focus { border-color: #E91E63; }
+      .photo-search-help {
+        margin-top: 0.35rem;
+        font-size: 0.78rem;
+        color: #9CA3AF;
+      }
+      .photo-search-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 0.4rem);
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #E5E7EB;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+        max-height: 280px;
+        overflow-y: auto;
+        list-style: none;
+        z-index: 30;
+      }
+      .photo-search-dropdown.open { display: block; }
+      .photo-search-dropdown li {
+        padding: 0.8rem 0.9rem;
+        border-bottom: 1px solid #F3F4F6;
+        cursor: pointer;
+      }
+      .photo-search-dropdown li:last-child { border-bottom: none; }
+      .photo-search-dropdown li:hover { background: #FAFAFA; }
+      .photo-search-name {
+        display: block;
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #111827;
+      }
+      .photo-search-city {
+        display: block;
+        margin-top: 0.15rem;
+        font-size: 0.78rem;
+        color: #9CA3AF;
+      }
+      .photo-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        min-height: 2rem;
+      }
+      .photo-summary-title {
+        font-size: 0.95rem;
+        color: #374151;
+      }
+      .photo-summary-title strong {
+        color: #111827;
+      }
+      .photo-summary-meta {
+        font-size: 0.8rem;
+        color: #9CA3AF;
+        white-space: nowrap;
+      }
+      .photo-gallery {
+        column-count: 1;
+        column-gap: 0.9rem;
+      }
+      @media (min-width: 640px) {
+        .photo-gallery { column-count: 2; }
+      }
+      @media (min-width: 900px) {
+        .photo-gallery { column-count: 3; }
+      }
+      .photo-card {
+        break-inside: avoid;
+        margin-bottom: 0.9rem;
+        border: 1px solid #E5E7EB;
+        border-radius: 1rem;
+        overflow: hidden;
+        background: #F9FAFB;
+      }
+      .photo-thumb-wrap {
+        position: relative;
+        background: #E5E7EB;
+      }
+      .photo-thumb {
+        display: block;
+        width: 100%;
+        max-height: 360px;
+        object-fit: cover;
+        background: #E5E7EB;
+      }
+      .photo-delete-btn {
+        position: absolute;
+        top: 0.65rem;
+        right: 0.65rem;
+        border: 0;
+        border-radius: 999px;
+        padding: 0.5rem 0.75rem;
+        background: rgba(17, 24, 39, 0.72);
+        color: #FFFFFF;
+        font-size: 0.76rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .photo-delete-btn:hover { background: rgba(17, 24, 39, 0.88); }
+      .photo-delete-btn.confirm { background: #DC2626; }
+      .photo-card-body {
+        padding: 0.75rem 0.85rem 0.85rem;
+      }
+      .photo-date {
+        font-size: 0.8rem;
+        color: #6B7280;
+      }
+      .photo-submeta {
+        margin-top: 0.3rem;
+        font-size: 0.74rem;
+        color: #9CA3AF;
+        word-break: break-word;
+      }
+      .photo-empty {
+        padding: 2.75rem 1rem;
+        text-align: center;
+        color: #9CA3AF;
+      }
+      .photo-empty strong {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: #6B7280;
+        font-size: 0.95rem;
+      }
+
       /* ── Footer meta ── */
       .portal-footer {
         width: 100%;
@@ -497,89 +689,123 @@ const portalMeta = getPortalMeta();
     <header class="topbar">
       <div class="topbar-left">
         <img src="/app-icon.svg" alt="Clover" />
-        <span class="topbar-title">Partner Offers</span>
+        <div>
+          <div class="topbar-title">Partner Portal</div>
+          <div class="topbar-subtitle">Offers and POI photos</div>
+        </div>
       </div>
       <button class="signout-btn" id="signout-btn">Sign out</button>
     </header>
 
     <main class="main">
-      <!-- Add Offer button -->
-      <div class="add-bar">
-        <button class="add-btn" id="open-modal-btn">+ Add Offer</button>
+      <div class="view-tabs" role="tablist" aria-label="Partner portal views">
+        <button class="view-tab active" id="offers-tab-btn" type="button" role="tab" aria-controls="offers-panel" aria-selected="true">Offers</button>
+        <button class="view-tab" id="photos-tab-btn" type="button" role="tab" aria-controls="photos-panel" aria-selected="false">Photos</button>
       </div>
 
-      <!-- Partner cards -->
-      {partnerList.length === 0 ? (
-        <div class="no-partners">
-          <div class="empty-icon">🤝</div>
-          <p>No partners yet. Add an offer to get started.</p>
+      <section id="offers-panel" class="view-panel" role="tabpanel" aria-labelledby="offers-tab-btn">
+        <div class="add-bar">
+          <button class="add-btn" id="open-modal-btn">+ Add Offer</button>
         </div>
-      ) : (
-        partnerList.map(([partnerId, { name, offers }]) => (
-          <div class="partner-card open" data-partner-id={partnerId}>
-            <div class="partner-header" onclick="togglePartner(this)">
-              <span class="partner-name">{name}</span>
-              <div style="display:flex;align-items:center;gap:0.5rem;">
-                <span class="partner-count">{offers.length} offer{offers.length !== 1 ? 's' : ''}</span>
-                <span class="chevron">▼</span>
-              </div>
-            </div>
-            <div class="partner-body">
-              {offers.length === 0 ? (
-                <div class="empty">
-                  <div class="empty-icon">📭</div>
-                  <p>No offers yet.</p>
+
+        {partnerList.length === 0 ? (
+          <div class="no-partners">
+            <div class="empty-icon">🤝</div>
+            <p>No partners yet. Add an offer to get started.</p>
+          </div>
+        ) : (
+          partnerList.map(([partnerId, { name, offers }]) => (
+            <div class="partner-card open" data-partner-id={partnerId}>
+              <div class="partner-header" onclick="togglePartner(this)">
+                <span class="partner-name">{name}</span>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                  <span class="partner-count">{offers.length} offer{offers.length !== 1 ? 's' : ''}</span>
+                  <span class="chevron">▼</span>
                 </div>
-              ) : (
-                offers.map((offer) => (
-                  <div class="offer-row" id={`offer-${offer.id}`}>
-                    <div class="offer-main">
-                      {offer.place && (
-                        <div class="offer-place">
-                          {offer.place.name}{offer.place.city ? `, ${offer.place.city}` : ''}
-                        </div>
-                      )}
-                      <div class="offer-desc">{offer.description ?? '—'}</div>
-                      <div class="offer-meta">
-                        {offer.code && <span class="offer-code">{offer.code}</span>}
-                        {(offer.valid_from || offer.valid_to) && (
-                          <span class="offer-dates">
-                            {offer.valid_from ? formatDate(offer.valid_from) : ''}
-                            {offer.valid_from && offer.valid_to ? ' → ' : ''}
-                            {offer.valid_to ? formatDate(offer.valid_to) : ''}
-                          </span>
+              </div>
+              <div class="partner-body">
+                {offers.length === 0 ? (
+                  <div class="empty">
+                    <div class="empty-icon">📭</div>
+                    <p>No offers yet.</p>
+                  </div>
+                ) : (
+                  offers.map((offer) => (
+                    <div class="offer-row" id={`offer-${offer.id}`}>
+                      <div class="offer-main">
+                        {offer.place && (
+                          <div class="offer-place">
+                            {offer.place.name}{offer.place.city ? `, ${offer.place.city}` : ''}
+                          </div>
                         )}
-                        {offer.hours_note && <span class="offer-hours">🕐 {offer.hours_note}</span>}
+                        <div class="offer-desc">{offer.description ?? '—'}</div>
+                        <div class="offer-meta">
+                          {offer.code && <span class="offer-code">{offer.code}</span>}
+                          {(offer.valid_from || offer.valid_to) && (
+                            <span class="offer-dates">
+                              {offer.valid_from ? formatDate(offer.valid_from) : ''}
+                              {offer.valid_from && offer.valid_to ? ' → ' : ''}
+                              {offer.valid_to ? formatDate(offer.valid_to) : ''}
+                            </span>
+                          )}
+                          {offer.hours_note && <span class="offer-hours">🕐 {offer.hours_note}</span>}
+                        </div>
+                      </div>
+                      <div class="offer-actions">
+                        <span class={`badge ${offer.active ? 'badge-active' : 'badge-paused'}`}>
+                          {offer.active ? 'Active' : 'Paused'}
+                        </span>
+                        {offer.active ? (
+                          <button
+                            class="act-btn pause"
+                            onclick={`toggleActive(${offer.id}, false)`}
+                          >Pause</button>
+                        ) : (
+                          <button
+                            class="act-btn activate"
+                            onclick={`toggleActive(${offer.id}, true)`}
+                          >Activate</button>
+                        )}
+                        <button
+                          class="act-btn remove"
+                          id={`remove-btn-${offer.id}`}
+                          onclick={`confirmRemove(${offer.id})`}
+                        >Remove</button>
                       </div>
                     </div>
-                    <div class="offer-actions">
-                      <span class={`badge ${offer.active ? 'badge-active' : 'badge-paused'}`}>
-                        {offer.active ? 'Active' : 'Paused'}
-                      </span>
-                      {offer.active ? (
-                        <button
-                          class="act-btn pause"
-                          onclick={`toggleActive(${offer.id}, false)`}
-                        >Pause</button>
-                      ) : (
-                        <button
-                          class="act-btn activate"
-                          onclick={`toggleActive(${offer.id}, true)`}
-                        >Activate</button>
-                      )}
-                      <button
-                        class="act-btn remove"
-                        id={`remove-btn-${offer.id}`}
-                        onclick={`confirmRemove(${offer.id})`}
-                      >Remove</button>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </section>
+
+      <section id="photos-panel" class="view-panel" role="tabpanel" aria-labelledby="photos-tab-btn" hidden>
+        <div class="photo-manager">
+          <div class="photo-toolbar">
+            <div class="photo-search-field">
+              <label for="photo-place-search">Search a POI to manage photos</label>
+              <div class="photo-search-picker">
+                <input type="text" id="photo-place-search" class="photo-search-input" placeholder="Search by place name..." autocomplete="off" />
+                <ul class="photo-search-dropdown" id="photo-place-dropdown" role="listbox"></ul>
+              </div>
+              <div class="photo-search-help">Select a place to open its gallery. Newest uploads appear first.</div>
             </div>
           </div>
-        ))
-      )}
+
+          <div class="photo-summary">
+            <div class="photo-summary-title" id="photo-summary-title">Search for a place to view its gallery.</div>
+            <div class="photo-summary-meta" id="photo-summary-meta"></div>
+          </div>
+
+          <div class="photo-gallery" id="photo-gallery" aria-live="polite"></div>
+          <div class="photo-empty" id="photo-empty">
+            <strong>No place selected</strong>
+            Start by searching for a POI name above.
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer class="portal-footer" aria-label="Page version information">
@@ -669,6 +895,73 @@ const portalMeta = getPortalMeta();
     </script>
 
     <script>
+      type PlaceOption = {
+        id: string;
+        name: string;
+        city: string | null;
+        label: string;
+        source: 'supabase' | 'gbptm';
+        gbptm?: { lat: number; lon: number; town?: string; address1?: string; postcode?: string };
+      };
+      type PlacePhoto = {
+        id: string;
+        place_id: string;
+        url: string;
+        created_at: string;
+        session_id?: string | null;
+        user_id?: string | null;
+      };
+
+      const offersTabBtn = document.getElementById('offers-tab-btn') as HTMLButtonElement;
+      const photosTabBtn = document.getElementById('photos-tab-btn') as HTMLButtonElement;
+      const offersPanel = document.getElementById('offers-panel') as HTMLElement;
+      const photosPanel = document.getElementById('photos-panel') as HTMLElement;
+
+      const supabasePlaces: PlaceOption[] = ((window as any).__allPlaces ?? []).map((p: { id: string; name: string; city: string | null; label: string }) => ({
+        ...p,
+        source: 'supabase' as const,
+      }));
+
+      const placeSearch = document.getElementById('f-place-search') as HTMLInputElement;
+      const placeHidden = document.getElementById('f-place') as HTMLInputElement;
+      const placeLoading = document.getElementById('f-place-loading') as HTMLDivElement;
+      const placeDropdown = document.getElementById('place-dropdown') as HTMLUListElement;
+      const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+
+      const photoPlaceSearch = document.getElementById('photo-place-search') as HTMLInputElement;
+      const photoPlaceDropdown = document.getElementById('photo-place-dropdown') as HTMLUListElement;
+      const photoGallery = document.getElementById('photo-gallery') as HTMLDivElement;
+      const photoEmpty = document.getElementById('photo-empty') as HTMLDivElement;
+      const photoSummaryTitle = document.getElementById('photo-summary-title') as HTMLDivElement;
+      const photoSummaryMeta = document.getElementById('photo-summary-meta') as HTMLDivElement;
+
+      let gbptmPlaces: PlaceOption[] = [];
+      let gbptmLoaded = false;
+      let selectedPhotoPlace: PlaceOption | null = null;
+      let currentPhotos: PlacePhoto[] = [];
+      const pendingRemove = new Set<number>();
+      const pendingPhotoDelete = new Set<string>();
+
+      function showToast(msg: string) {
+        const el = document.getElementById('toast')!;
+        el.textContent = msg;
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 3000);
+      }
+
+      function setActiveView(view: 'offers' | 'photos') {
+        const showOffers = view === 'offers';
+        offersTabBtn.classList.toggle('active', showOffers);
+        photosTabBtn.classList.toggle('active', !showOffers);
+        offersTabBtn.setAttribute('aria-selected', String(showOffers));
+        photosTabBtn.setAttribute('aria-selected', String(!showOffers));
+        offersPanel.hidden = !showOffers;
+        photosPanel.hidden = showOffers;
+      }
+
+      offersTabBtn.addEventListener('click', () => setActiveView('offers'));
+      photosTabBtn.addEventListener('click', () => setActiveView('photos'));
+
       // ── Collapse/expand partner cards ──
       // @ts-ignore — called from inline onclick attributes
       window.togglePartner = function togglePartner(header: HTMLElement) {
@@ -680,7 +973,6 @@ const portalMeta = getPortalMeta();
         }
       }
 
-      // init hidden state for closed cards (all start open)
       document.querySelectorAll('.partner-card:not(.open) .partner-body').forEach(b => {
         (b as HTMLElement).style.display = 'none';
       });
@@ -688,7 +980,7 @@ const portalMeta = getPortalMeta();
       // ── Modal ──
       function openModal() {
         document.getElementById('modal-backdrop')!.classList.add('open');
-        (document.getElementById('f-partner') as HTMLSelectElement).focus();
+        placeSearch.focus();
       }
       // @ts-ignore — called from inline onclick attributes
       window.closeModal = function closeModal() {
@@ -700,19 +992,6 @@ const portalMeta = getPortalMeta();
         if (e.target === e.currentTarget) (window as any).closeModal();
       });
 
-      // ── Place search ──
-      type PlaceOption = { id: string; label: string; source: 'supabase' | 'gbptm'; gbptm?: { lat: number; lon: number; town?: string; address1?: string; postcode?: string } };
-      const supabasePlaces: PlaceOption[] = ((window as any).__allPlaces ?? []).map((p: { id: string; label: string }) => ({ ...p, source: 'supabase' as const }));
-
-      const placeSearch = document.getElementById('f-place-search') as HTMLInputElement;
-      const placeHidden = document.getElementById('f-place') as HTMLInputElement;
-      const placeLoading = document.getElementById('f-place-loading') as HTMLDivElement;
-      const placeDropdown = document.getElementById('place-dropdown') as HTMLUListElement;
-      const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
-
-      // GBPTM data lazy-loaded on first search
-      let gbptmPlaces: PlaceOption[] = [];
-      let gbptmLoaded = false;
       async function loadGbptm() {
         if (gbptmLoaded) return;
         gbptmLoaded = true;
@@ -721,16 +1000,18 @@ const portalMeta = getPortalMeta();
             await fetch('/data/gbptm-places.json').then(r => r.json());
           gbptmPlaces = raw.map(p => ({
             id: p.id,
+            name: p.name,
+            city: p.town ?? null,
             label: p.name + (p.town ? ` \u2014 ${p.town}` : ''),
             source: 'gbptm' as const,
             gbptm: { lat: p.lat, lon: p.lon, town: p.town, address1: p.address1, postcode: p.postcode },
           }));
         } catch {
-          // silently ignore — portal still works with just Supabase places
+          // Portal still works with just Supabase places
         }
       }
 
-      function positionDropdown() {
+      function positionPlaceDropdown() {
         const rect = placeSearch.getBoundingClientRect();
         placeDropdown.style.top = `${rect.bottom + 4}px`;
         placeDropdown.style.left = `${rect.left}px`;
@@ -745,7 +1026,7 @@ const portalMeta = getPortalMeta();
           : pool.filter(p => p.label.toLowerCase().includes(q)).slice(0, 50);
 
         placeDropdown.innerHTML = '';
-        positionDropdown();
+        positionPlaceDropdown();
 
         if (matches.length === 0) {
           const li = document.createElement('li');
@@ -764,38 +1045,227 @@ const portalMeta = getPortalMeta();
 
               if (p.source === 'supabase') {
                 placeHidden.value = p.id;
-              } else {
-                // Upsert GBPTM place into Supabase, get back a UUID
-                placeHidden.value = '';
-                placeLoading.style.display = 'block';
-                submitBtn.disabled = true;
-                try {
-                  const res = await fetch('/api/partner-portal/places', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ gbptm_id: p.id, name: p.label.split(' \u2014 ')[0], ...p.gbptm }),
-                  });
-                  const json = await res.json();
-                  if (res.ok) {
-                    placeHidden.value = json.id;
-                  } else {
-                    showToast(json.error ?? 'Could not save place. Try again.');
-                    placeSearch.value = '';
-                  }
-                } catch {
-                  showToast('Network error saving place. Try again.');
+                return;
+              }
+
+              placeHidden.value = '';
+              placeLoading.style.display = 'block';
+              submitBtn.disabled = true;
+
+              try {
+                const res = await fetch('/api/partner-portal/places', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ gbptm_id: p.id, name: p.label.split(' \u2014 ')[0], ...p.gbptm }),
+                });
+                const json = await res.json();
+                if (res.ok) {
+                  placeHidden.value = json.id;
+                } else {
+                  showToast(json.error ?? 'Could not save place. Try again.');
                   placeSearch.value = '';
-                } finally {
-                  placeLoading.style.display = 'none';
-                  submitBtn.disabled = false;
                 }
+              } catch {
+                showToast('Network error saving place. Try again.');
+                placeSearch.value = '';
+              } finally {
+                placeLoading.style.display = 'none';
+                submitBtn.disabled = false;
               }
             });
             placeDropdown.appendChild(li);
           });
         }
+
         placeDropdown.classList.add('open');
       }
+
+      function formatPhotoDate(iso: string) {
+        return new Date(iso).toLocaleString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      }
+
+      function renderPhotoState() {
+        photoGallery.innerHTML = '';
+
+        if (!selectedPhotoPlace) {
+          photoSummaryTitle.textContent = 'Search for a place to view its gallery.';
+          photoSummaryMeta.textContent = '';
+          photoEmpty.hidden = false;
+          photoEmpty.innerHTML = '<strong>No place selected</strong>Start by searching for a POI name above.';
+          return;
+        }
+
+        photoSummaryTitle.textContent = `Photos for ${selectedPhotoPlace.name}${selectedPhotoPlace.city ? `, ${selectedPhotoPlace.city}` : ''}`;
+        photoSummaryMeta.textContent = `${currentPhotos.length} photo${currentPhotos.length === 1 ? '' : 's'}`;
+
+        if (currentPhotos.length === 0) {
+          photoEmpty.hidden = false;
+          photoEmpty.innerHTML = '<strong>No photos yet</strong>This place does not have any uploaded photos.';
+          return;
+        }
+
+        photoEmpty.hidden = true;
+
+        currentPhotos.forEach(photo => {
+          const card = document.createElement('article');
+          card.className = 'photo-card';
+          card.id = `photo-${photo.id}`;
+
+          const thumbWrap = document.createElement('div');
+          thumbWrap.className = 'photo-thumb-wrap';
+
+          const img = document.createElement('img');
+          img.className = 'photo-thumb';
+          img.src = photo.url;
+          img.alt = `Photo uploaded for ${selectedPhotoPlace?.name ?? 'place'}`;
+          img.loading = 'lazy';
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.type = 'button';
+          deleteBtn.className = 'photo-delete-btn';
+          deleteBtn.textContent = pendingPhotoDelete.has(photo.id) ? 'Confirm?' : 'Remove';
+          if (pendingPhotoDelete.has(photo.id)) deleteBtn.classList.add('confirm');
+          deleteBtn.addEventListener('click', () => void handlePhotoDelete(photo.id));
+
+          const body = document.createElement('div');
+          body.className = 'photo-card-body';
+
+          const date = document.createElement('div');
+          date.className = 'photo-date';
+          date.textContent = formatPhotoDate(photo.created_at);
+
+          const submeta = document.createElement('div');
+          submeta.className = 'photo-submeta';
+          submeta.textContent = photo.user_id ? `User ${photo.user_id}` : (photo.session_id ? `Session ${photo.session_id}` : 'Community upload');
+
+          thumbWrap.appendChild(img);
+          thumbWrap.appendChild(deleteBtn);
+          body.appendChild(date);
+          body.appendChild(submeta);
+          card.appendChild(thumbWrap);
+          card.appendChild(body);
+          photoGallery.appendChild(card);
+        });
+      }
+
+      async function loadPhotoGallery(place: PlaceOption) {
+        selectedPhotoPlace = place;
+        photoSummaryTitle.textContent = `Loading photos for ${place.name}${place.city ? `, ${place.city}` : ''}...`;
+        photoSummaryMeta.textContent = '';
+        photoEmpty.hidden = true;
+        photoGallery.innerHTML = '';
+
+        try {
+          const res = await fetch(`/api/partner-portal/photos?place_id=${encodeURIComponent(place.id)}`);
+          const body = await res.json().catch(() => null);
+
+          if (!res.ok) {
+            showToast(body?.error ?? 'Could not load photos. Please try again.');
+            currentPhotos = [];
+          } else {
+            currentPhotos = Array.isArray(body) ? body : [];
+          }
+        } catch {
+          currentPhotos = [];
+          showToast('Network error loading photos. Please try again.');
+        }
+
+        renderPhotoState();
+      }
+
+      async function handlePhotoDelete(photoId: string) {
+        const photo = currentPhotos.find(item => item.id === photoId);
+        if (!photo) return;
+
+        const btn = document.querySelector(`#photo-${photoId} .photo-delete-btn`) as HTMLButtonElement | null;
+        if (!pendingPhotoDelete.has(photoId)) {
+          pendingPhotoDelete.add(photoId);
+          if (btn) {
+            btn.textContent = 'Confirm?';
+            btn.classList.add('confirm');
+          }
+          setTimeout(() => {
+            if (pendingPhotoDelete.has(photoId)) {
+              pendingPhotoDelete.delete(photoId);
+              renderPhotoState();
+            }
+          }, 3000);
+          return;
+        }
+
+        pendingPhotoDelete.delete(photoId);
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Removing...';
+        }
+
+        try {
+          const res = await fetch(`/api/partner-portal/photos/${photoId}`, { method: 'DELETE' });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            showToast(body.error ?? 'Could not remove photo. Please try again.');
+            renderPhotoState();
+            return;
+          }
+
+          currentPhotos = currentPhotos.filter(item => item.id !== photoId);
+          showToast('Photo removed');
+          renderPhotoState();
+        } catch {
+          showToast('Network error removing photo. Please try again.');
+          renderPhotoState();
+        }
+      }
+
+      function renderPhotoSearchDropdown(query: string) {
+        const q = query.toLowerCase().trim();
+        const matches = q.length === 0
+          ? []
+          : supabasePlaces.filter(place => place.label.toLowerCase().includes(q)).slice(0, 12);
+
+        photoPlaceDropdown.innerHTML = '';
+        if (matches.length === 0) {
+          photoPlaceDropdown.classList.remove('open');
+          return;
+        }
+
+        matches.forEach(place => {
+          const li = document.createElement('li');
+          li.setAttribute('role', 'option');
+
+          const name = document.createElement('span');
+          name.className = 'photo-search-name';
+          name.textContent = place.name;
+
+          const city = document.createElement('span');
+          city.className = 'photo-search-city';
+          city.textContent = place.city ?? 'No city';
+
+          li.appendChild(name);
+          li.appendChild(city);
+          li.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            photoPlaceSearch.value = place.label;
+            photoPlaceDropdown.classList.remove('open');
+            void loadPhotoGallery(place);
+          });
+          photoPlaceDropdown.appendChild(li);
+        });
+
+        photoPlaceDropdown.classList.add('open');
+      }
+
+      photoPlaceSearch.addEventListener('input', () => renderPhotoSearchDropdown(photoPlaceSearch.value));
+      photoPlaceSearch.addEventListener('focus', () => renderPhotoSearchDropdown(photoPlaceSearch.value));
+      photoPlaceSearch.addEventListener('blur', () => {
+        setTimeout(() => photoPlaceDropdown.classList.remove('open'), 150);
+      });
 
       placeSearch.addEventListener('input', async () => {
         placeHidden.value = '';
@@ -807,7 +1277,6 @@ const portalMeta = getPortalMeta();
         setTimeout(() => placeDropdown.classList.remove('open'), 150);
       });
 
-      // Reset place picker when modal closes
       const _origCloseModal = (window as any).closeModal as () => void;
       // @ts-ignore
       window.closeModal = function closeModal() {
@@ -818,21 +1287,11 @@ const portalMeta = getPortalMeta();
         _origCloseModal();
       }
 
-      // ── Toast ──
-      function showToast(msg: string) {
-        const el = document.getElementById('toast')!;
-        el.textContent = msg;
-        el.classList.add('show');
-        setTimeout(() => el.classList.remove('show'), 3000);
-      }
-
-      // ── Sign out ──
       document.getElementById('signout-btn')!.addEventListener('click', async () => {
         await fetch('/api/partner-portal/signout', { method: 'POST' });
         window.location.href = '/partner-portal/login';
       });
 
-      // ── Toggle active/pause ──
       // @ts-ignore — called from inline onclick attributes
       window.toggleActive = async function toggleActive(offerId: number, active: boolean) {
         try {
@@ -863,15 +1322,12 @@ const portalMeta = getPortalMeta();
         }
       }
 
-      // ── Remove offer ──
-      const pendingRemove = new Set<number>();
       // @ts-ignore — called from inline onclick attributes
       window.confirmRemove = async function confirmRemove(offerId: number) {
         const btn = document.getElementById(`remove-btn-${offerId}`) as HTMLButtonElement;
         if (!btn) return;
 
         if (!pendingRemove.has(offerId)) {
-          // First click: ask for confirm
           pendingRemove.add(offerId);
           btn.textContent = 'Sure?';
           btn.classList.add('confirm');
@@ -885,7 +1341,6 @@ const portalMeta = getPortalMeta();
           return;
         }
 
-        // Second click: do delete
         pendingRemove.delete(offerId);
         try {
           const res = await fetch(`/api/partner-portal/offers/${offerId}`, { method: 'DELETE' });
@@ -901,12 +1356,10 @@ const portalMeta = getPortalMeta();
         }
       }
 
-      // ── Add offer form submit ──
       document.getElementById('add-offer-form')!.addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
 
-        // Explicit place validation (hidden input required= is unreliable cross-browser)
         if (!placeHidden.value) {
           showToast('Please select a place from the dropdown.');
           placeSearch.focus();
@@ -949,6 +1402,8 @@ const portalMeta = getPortalMeta();
           submitBtn.disabled = false;
         }
       });
+
+      renderPhotoState();
     </script>
   </body>
 </html>
