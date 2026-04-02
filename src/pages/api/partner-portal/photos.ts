@@ -13,6 +13,10 @@ type PhotoRow = {
   user_id: string | null;
 };
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export const GET: APIRoute = async ({ request, cookies }) => {
   const user = await getUser(cookies);
   if (!user) {
@@ -40,7 +44,11 @@ export const GET: APIRoute = async ({ request, cookies }) => {
   }
 
   const photos = (data ?? []) as PhotoRow[];
-  const placeIds = Array.from(new Set(photos.map(photo => photo.place_id).filter(Boolean)));
+  const placeIds = Array.from(new Set(
+    photos
+      .map(photo => photo.place_id)
+      .filter((value): value is string => Boolean(value) && isUuid(value))
+  ));
 
   let placeMap = new Map<string, { name: string; city: string | null }>();
   if (placeIds.length > 0) {

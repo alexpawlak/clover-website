@@ -1,0 +1,328 @@
+---
+export const prerender = false;
+
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { requireAuth } from '../../lib/auth';
+import { supabaseAdmin } from '../../lib/supabase-admin';
+import { STUDIO_NAME } from '../../lib/studio-meta';
+
+const { redirect } = await requireAuth(Astro.cookies);
+if (redirect) return Astro.redirect(redirect);
+
+const { data: places } = await supabaseAdmin
+  .from('places')
+  .select('id, name, city')
+  .order('name');
+
+const allPlacesData = (places ?? []).map(pl => ({
+  id: pl.id,
+  name: pl.name,
+  city: pl.city ?? null,
+  label: pl.name + (pl.city ? ` \u2014 ${pl.city}` : ''),
+}));
+---
+
+<StudioLayout title={`Photos — ${STUDIO_NAME}`} active="photos">
+  <div class="photo-manager">
+    <div class="photo-toolbar">
+      <div class="photo-search-field">
+        <label for="photo-place-search">Search a POI to manage photos</label>
+        <div class="photo-search-picker">
+          <input type="text" id="photo-place-search" class="photo-search-input" placeholder="Search by place name..." autocomplete="off" />
+          <ul class="photo-search-dropdown" id="photo-place-dropdown" role="listbox"></ul>
+        </div>
+        <div class="photo-search-help">When no search is active, the latest uploaded photos appear first for quick review.</div>
+      </div>
+    </div>
+
+    <div class="photo-summary">
+      <div class="photo-summary-title" id="photo-summary-title">Loading latest uploaded photos...</div>
+      <div class="photo-summary-meta" id="photo-summary-meta"></div>
+    </div>
+
+    <div class="photo-gallery" id="photo-gallery" aria-live="polite"></div>
+    <div class="photo-empty" id="photo-empty" hidden></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script is:inline define:vars={{ allPlacesData }}>
+    window.__allPlaces = allPlacesData;
+  </script>
+
+  <script>
+    type PlaceOption = {
+      id: string;
+      name: string;
+      city: string | null;
+      label: string;
+      source: 'supabase';
+    };
+    type PlacePhoto = {
+      id: string;
+      place_id: string;
+      url: string;
+      created_at: string;
+      session_id?: string | null;
+      user_id?: string | null;
+      place_name?: string | null;
+      place_city?: string | null;
+    };
+
+    const supabasePlaces: PlaceOption[] = ((window as any).__allPlaces ?? []).map((p: { id: string; name: string; city: string | null; label: string }) => ({
+      ...p,
+      source: 'supabase' as const,
+    }));
+
+    const photoPlaceSearch = document.getElementById('photo-place-search') as HTMLInputElement;
+    const photoPlaceDropdown = document.getElementById('photo-place-dropdown') as HTMLUListElement;
+    const photoGallery = document.getElementById('photo-gallery') as HTMLDivElement;
+    const photoEmpty = document.getElementById('photo-empty') as HTMLDivElement;
+    const photoSummaryTitle = document.getElementById('photo-summary-title') as HTMLDivElement;
+    const photoSummaryMeta = document.getElementById('photo-summary-meta') as HTMLDivElement;
+
+    let photoFeedMode: 'latest' | 'place' = 'latest';
+    let selectedPhotoPlace: PlaceOption | null = null;
+    let currentPhotos: PlacePhoto[] = [];
+    const pendingPhotoDelete = new Set<string>();
+
+    function showToast(msg: string) {
+      const el = document.getElementById('toast')!;
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    function formatPhotoDate(iso: string) {
+      return new Date(iso).toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+
+    function renderPhotoState() {
+      photoGallery.innerHTML = '';
+
+      if (photoFeedMode === 'latest') {
+        photoSummaryTitle.textContent = 'Latest uploaded photos';
+      } else if (selectedPhotoPlace) {
+        photoSummaryTitle.textContent = `Photos for ${selectedPhotoPlace.name}${selectedPhotoPlace.city ? `, ${selectedPhotoPlace.city}` : ''}`;
+      } else {
+        photoSummaryTitle.textContent = 'Latest uploaded photos';
+      }
+      photoSummaryMeta.textContent = `${currentPhotos.length} photo${currentPhotos.length === 1 ? '' : 's'}`;
+
+      if (currentPhotos.length === 0) {
+        photoEmpty.hidden = false;
+        photoEmpty.innerHTML = photoFeedMode === 'latest'
+          ? '<strong>No photos uploaded yet</strong>Recent uploads will appear here automatically.'
+          : '<strong>No photos yet</strong>This place does not have any uploaded photos.';
+        return;
+      }
+
+      photoEmpty.hidden = true;
+
+      currentPhotos.forEach(photo => {
+        const card = document.createElement('article');
+        card.className = 'photo-card';
+        card.id = `photo-${photo.id}`;
+
+        const thumbWrap = document.createElement('div');
+        thumbWrap.className = 'photo-thumb-wrap';
+
+        const img = document.createElement('img');
+        img.className = 'photo-thumb';
+        img.src = photo.url;
+        const placeName = photoFeedMode === 'latest'
+          ? (photo.place_name ?? photo.place_id)
+          : (selectedPhotoPlace?.name ?? photo.place_name ?? photo.place_id);
+        const placeCity = photoFeedMode === 'latest'
+          ? (photo.place_city ?? null)
+          : (selectedPhotoPlace?.city ?? photo.place_city ?? null);
+        const placeLabel = `${placeName}${placeCity ? `, ${placeCity}` : ''}`;
+        img.alt = `Photo uploaded for ${placeLabel}`;
+        img.loading = 'lazy';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'photo-delete-btn';
+        deleteBtn.textContent = pendingPhotoDelete.has(photo.id) ? 'Confirm?' : 'Remove';
+        if (pendingPhotoDelete.has(photo.id)) deleteBtn.classList.add('confirm');
+        deleteBtn.addEventListener('click', () => void handlePhotoDelete(photo.id));
+
+        const body = document.createElement('div');
+        body.className = 'photo-card-body';
+
+        const date = document.createElement('div');
+        date.className = 'photo-date';
+        date.textContent = formatPhotoDate(photo.created_at);
+
+        const submeta = document.createElement('div');
+        submeta.className = 'photo-submeta';
+        const metaParts: string[] = [];
+        if (photoFeedMode === 'latest') metaParts.push(placeLabel);
+        metaParts.push(photo.user_id ? `User ${photo.user_id}` : (photo.session_id ? `Session ${photo.session_id}` : 'Community upload'));
+        submeta.textContent = metaParts.join(' • ');
+
+        thumbWrap.appendChild(img);
+        thumbWrap.appendChild(deleteBtn);
+        body.appendChild(date);
+        body.appendChild(submeta);
+        card.appendChild(thumbWrap);
+        card.appendChild(body);
+        photoGallery.appendChild(card);
+      });
+    }
+
+    async function loadLatestPhotos() {
+      photoFeedMode = 'latest';
+      selectedPhotoPlace = null;
+      photoSummaryTitle.textContent = 'Loading latest uploaded photos...';
+      photoSummaryMeta.textContent = '';
+      photoEmpty.hidden = true;
+      photoGallery.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/partner-portal/photos');
+        const body = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          showToast(body?.error ?? 'Could not load recent photos. Please try again.');
+          currentPhotos = [];
+        } else {
+          currentPhotos = Array.isArray(body) ? body : [];
+        }
+      } catch {
+        currentPhotos = [];
+        showToast('Network error loading recent photos. Please try again.');
+      }
+
+      renderPhotoState();
+    }
+
+    async function loadPhotoGallery(place: PlaceOption) {
+      photoFeedMode = 'place';
+      selectedPhotoPlace = place;
+      photoSummaryTitle.textContent = `Loading photos for ${place.name}${place.city ? `, ${place.city}` : ''}...`;
+      photoSummaryMeta.textContent = '';
+      photoEmpty.hidden = true;
+      photoGallery.innerHTML = '';
+
+      try {
+        const res = await fetch(`/api/partner-portal/photos?place_id=${encodeURIComponent(place.id)}`);
+        const body = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          showToast(body?.error ?? 'Could not load photos. Please try again.');
+          currentPhotos = [];
+        } else {
+          currentPhotos = Array.isArray(body) ? body : [];
+        }
+      } catch {
+        currentPhotos = [];
+        showToast('Network error loading photos. Please try again.');
+      }
+
+      renderPhotoState();
+    }
+
+    async function handlePhotoDelete(photoId: string) {
+      if (!currentPhotos.find(item => item.id === photoId)) return;
+
+      const btn = document.querySelector(`#photo-${photoId} .photo-delete-btn`) as HTMLButtonElement | null;
+      if (!pendingPhotoDelete.has(photoId)) {
+        pendingPhotoDelete.add(photoId);
+        if (btn) {
+          btn.textContent = 'Confirm?';
+          btn.classList.add('confirm');
+        }
+        setTimeout(() => {
+          if (pendingPhotoDelete.has(photoId)) {
+            pendingPhotoDelete.delete(photoId);
+            renderPhotoState();
+          }
+        }, 3000);
+        return;
+      }
+
+      pendingPhotoDelete.delete(photoId);
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Removing...';
+      }
+
+      try {
+        const res = await fetch(`/api/partner-portal/photos/${photoId}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          showToast(body.error ?? 'Could not remove photo. Please try again.');
+          renderPhotoState();
+          return;
+        }
+
+        currentPhotos = currentPhotos.filter(item => item.id !== photoId);
+        showToast('Photo removed');
+        renderPhotoState();
+      } catch {
+        showToast('Network error removing photo. Please try again.');
+        renderPhotoState();
+      }
+    }
+
+    function renderPhotoSearchDropdown(query: string) {
+      const q = query.toLowerCase().trim();
+      const matches = q.length === 0
+        ? []
+        : supabasePlaces.filter(place => place.label.toLowerCase().includes(q)).slice(0, 12);
+
+      photoPlaceDropdown.innerHTML = '';
+      if (matches.length === 0) {
+        photoPlaceDropdown.classList.remove('open');
+        return;
+      }
+
+      matches.forEach(place => {
+        const li = document.createElement('li');
+        li.setAttribute('role', 'option');
+
+        const name = document.createElement('span');
+        name.className = 'photo-search-name';
+        name.textContent = place.name;
+
+        const city = document.createElement('span');
+        city.className = 'photo-search-city';
+        city.textContent = place.city ?? 'No city';
+
+        li.appendChild(name);
+        li.appendChild(city);
+        li.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          photoPlaceSearch.value = place.label;
+          photoPlaceDropdown.classList.remove('open');
+          void loadPhotoGallery(place);
+        });
+        photoPlaceDropdown.appendChild(li);
+      });
+
+      photoPlaceDropdown.classList.add('open');
+    }
+
+    photoPlaceSearch.addEventListener('input', () => {
+      if (photoPlaceSearch.value.trim() === '') {
+        photoPlaceDropdown.classList.remove('open');
+        void loadLatestPhotos();
+        return;
+      }
+      renderPhotoSearchDropdown(photoPlaceSearch.value);
+    });
+    photoPlaceSearch.addEventListener('focus', () => renderPhotoSearchDropdown(photoPlaceSearch.value));
+    photoPlaceSearch.addEventListener('blur', () => {
+      setTimeout(() => photoPlaceDropdown.classList.remove('open'), 150);
+    });
+
+    void loadLatestPhotos();
+  </script>
+</StudioLayout>

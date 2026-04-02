@@ -1,0 +1,479 @@
+---
+export const prerender = false;
+
+import StudioLayout from '../../layouts/StudioLayout.astro';
+import { requireAuth } from '../../lib/auth';
+import { supabaseAdmin } from '../../lib/supabase-admin';
+import { STUDIO_NAME } from '../../lib/studio-meta';
+
+const { redirect } = await requireAuth(Astro.cookies);
+if (redirect) return Astro.redirect(redirect);
+
+const { data: rows, error } = await supabaseAdmin
+  .from('partner_offers')
+  .select(`
+    id, description, code, active, valid_from, valid_to,
+    hours_note, max_per_family, stock_note, created_at,
+    partner:partners(id, name),
+    place:places(id, name, city)
+  `)
+  .order('created_at', { ascending: false });
+
+if (error) console.error('Dashboard load error:', error);
+
+const { data: places } = await supabaseAdmin
+  .from('places')
+  .select('id, name, city')
+  .order('name');
+
+type Offer = {
+  id: number;
+  description: string | null;
+  code: string | null;
+  active: boolean;
+  valid_from: string | null;
+  valid_to: string | null;
+  hours_note: string | null;
+  max_per_family: number | null;
+  stock_note: string | null;
+  created_at: string;
+  partner: { id: number; name: string } | null;
+  place: { id: string; name: string; city: string | null } | null;
+};
+
+const offerRows: Offer[] = (rows ?? []) as unknown as Offer[];
+
+const partnerMap = new Map<number, { name: string; offers: Offer[] }>();
+for (const row of offerRows) {
+  if (!row.partner) continue;
+  const pid = row.partner.id;
+  if (!partnerMap.has(pid)) {
+    partnerMap.set(pid, { name: row.partner.name, offers: [] });
+  }
+  partnerMap.get(pid)!.offers.push(row);
+}
+const partnerList = Array.from(partnerMap.entries()).sort((a, b) =>
+  a[1].name.localeCompare(b[1].name)
+);
+
+function formatDate(iso: string | null) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+const allPlacesData = (places ?? []).map(pl => ({
+  id: pl.id,
+  name: pl.name,
+  city: pl.city ?? null,
+  label: pl.name + (pl.city ? ` \u2014 ${pl.city}` : ''),
+}));
+---
+
+<StudioLayout title={`Offers — ${STUDIO_NAME}`} active="offers">
+  <div class="add-bar">
+    <button class="add-btn" id="open-modal-btn">+ Add Offer</button>
+  </div>
+
+  {partnerList.length === 0 ? (
+    <div class="no-partners">
+      <div class="empty-icon">🤝</div>
+      <p>No partners yet. Add an offer to get started.</p>
+    </div>
+  ) : (
+    partnerList.map(([partnerId, { name, offers }]) => (
+      <div class="partner-card open" data-partner-id={partnerId}>
+        <div class="partner-header" onclick="togglePartner(this)">
+          <span class="partner-name">{name}</span>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span class="partner-count">{offers.length} offer{offers.length !== 1 ? 's' : ''}</span>
+            <span class="chevron">▼</span>
+          </div>
+        </div>
+        <div class="partner-body">
+          {offers.length === 0 ? (
+            <div class="empty">
+              <div class="empty-icon">📭</div>
+              <p>No offers yet.</p>
+            </div>
+          ) : (
+            offers.map((offer) => (
+              <div class="offer-row" id={`offer-${offer.id}`}>
+                <div class="offer-main">
+                  {offer.place && (
+                    <div class="offer-place">
+                      {offer.place.name}{offer.place.city ? `, ${offer.place.city}` : ''}
+                    </div>
+                  )}
+                  <div class="offer-desc">{offer.description ?? '—'}</div>
+                  <div class="offer-meta">
+                    {offer.code && <span class="offer-code">{offer.code}</span>}
+                    {(offer.valid_from || offer.valid_to) && (
+                      <span class="offer-dates">
+                        {offer.valid_from ? formatDate(offer.valid_from) : ''}
+                        {offer.valid_from && offer.valid_to ? ' → ' : ''}
+                        {offer.valid_to ? formatDate(offer.valid_to) : ''}
+                      </span>
+                    )}
+                    {offer.hours_note && <span class="offer-hours">🕐 {offer.hours_note}</span>}
+                  </div>
+                </div>
+                <div class="offer-actions">
+                  <span class={`badge ${offer.active ? 'badge-active' : 'badge-paused'}`}>
+                    {offer.active ? 'Active' : 'Paused'}
+                  </span>
+                  {offer.active ? (
+                    <button class="act-btn pause" onclick={`toggleActive(${offer.id}, false)`}>Pause</button>
+                  ) : (
+                    <button class="act-btn activate" onclick={`toggleActive(${offer.id}, true)`}>Activate</button>
+                  )}
+                  <button class="act-btn remove" id={`remove-btn-${offer.id}`} onclick={`confirmRemove(${offer.id})`}>Remove</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    ))
+  )}
+
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-title">
+        <span id="modal-title">Add New Offer</span>
+        <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+      </div>
+      <form id="add-offer-form">
+        <div class="field">
+          <label for="f-place-search">Place (POI) *</label>
+          <div class="place-picker" id="place-picker">
+            <input type="text" id="f-place-search" placeholder="Search places…" autocomplete="off" />
+            <input type="hidden" id="f-place" name="place_id" required />
+            <div id="f-place-loading" style="display:none;font-size:0.8rem;color:#9CA3AF;margin-top:0.25rem;">Saving place…</div>
+            <ul class="place-dropdown" id="place-dropdown" role="listbox"></ul>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-desc">Description *</label>
+          <textarea id="f-desc" name="description" required placeholder="e.g. Free Babyccino — Show this code to staff"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-code">Discount code</label>
+          <input type="text" id="f-code" name="code" placeholder="e.g. CLOVER-2025" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-from">Valid from</label>
+            <input type="date" id="f-from" name="valid_from" />
+          </div>
+          <div class="field">
+            <label for="f-to">Valid to</label>
+            <input type="date" id="f-to" name="valid_to" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-hours">Hours note</label>
+          <input type="text" id="f-hours" name="hours_note" placeholder="e.g. Weekdays 10–11am" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="f-max">Max per family</label>
+            <input type="number" id="f-max" name="max_per_family" min="1" placeholder="e.g. 1" />
+          </div>
+          <div class="field">
+            <label for="f-stock">Stock note</label>
+            <input type="text" id="f-stock" name="stock_note" placeholder="e.g. While stocks last" />
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-primary" id="submit-btn">Add Offer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script is:inline define:vars={{ allPlacesData }}>
+    window.__allPlaces = allPlacesData;
+  </script>
+
+  <script>
+    type PlaceOption = {
+      id: string;
+      name: string;
+      city: string | null;
+      label: string;
+      source: 'supabase' | 'gbptm';
+      gbptm?: { lat: number; lon: number; town?: string; address1?: string; postcode?: string };
+    };
+
+    const supabasePlaces: PlaceOption[] = ((window as any).__allPlaces ?? []).map((p: { id: string; name: string; city: string | null; label: string }) => ({
+      ...p,
+      source: 'supabase' as const,
+    }));
+
+    const placeSearch = document.getElementById('f-place-search') as HTMLInputElement;
+    const placeHidden = document.getElementById('f-place') as HTMLInputElement;
+    const placeLoading = document.getElementById('f-place-loading') as HTMLDivElement;
+    const placeDropdown = document.getElementById('place-dropdown') as HTMLUListElement;
+    const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const pendingRemove = new Set<number>();
+
+    let gbptmPlaces: PlaceOption[] = [];
+    let gbptmLoaded = false;
+
+    function showToast(msg: string) {
+      const el = document.getElementById('toast')!;
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
+    // @ts-ignore
+    window.togglePartner = function togglePartner(header: HTMLElement) {
+      const card = header.closest('.partner-card');
+      if (card) card.classList.toggle('open');
+      const body = card?.querySelector('.partner-body') as HTMLElement | null;
+      if (body) body.style.display = card?.classList.contains('open') ? '' : 'none';
+    }
+
+    document.querySelectorAll('.partner-card:not(.open) .partner-body').forEach(b => {
+      (b as HTMLElement).style.display = 'none';
+    });
+
+    function openModal() {
+      document.getElementById('modal-backdrop')!.classList.add('open');
+      placeSearch.focus();
+    }
+
+    // @ts-ignore
+    window.closeModal = function closeModal() {
+      document.getElementById('modal-backdrop')!.classList.remove('open');
+      (document.getElementById('add-offer-form') as HTMLFormElement).reset();
+    }
+
+    document.getElementById('open-modal-btn')!.addEventListener('click', openModal);
+    document.getElementById('modal-backdrop')!.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) (window as any).closeModal();
+    });
+
+    async function loadGbptm() {
+      if (gbptmLoaded) return;
+      gbptmLoaded = true;
+      try {
+        const raw: { id: string; name: string; lat: number; lon: number; town?: string; address1?: string; postcode?: string }[] =
+          await fetch('/data/gbptm-places.json').then(r => r.json());
+        gbptmPlaces = raw.map(p => ({
+          id: p.id,
+          name: p.name,
+          city: p.town ?? null,
+          label: p.name + (p.town ? ` \u2014 ${p.town}` : ''),
+          source: 'gbptm' as const,
+          gbptm: { lat: p.lat, lon: p.lon, town: p.town, address1: p.address1, postcode: p.postcode },
+        }));
+      } catch {
+        // Portal still works with just Supabase places
+      }
+    }
+
+    function positionPlaceDropdown() {
+      const rect = placeSearch.getBoundingClientRect();
+      placeDropdown.style.top = `${rect.bottom + 4}px`;
+      placeDropdown.style.left = `${rect.left}px`;
+      placeDropdown.style.width = `${rect.width}px`;
+    }
+
+    function renderPlaceDropdown(query: string) {
+      const q = query.toLowerCase().trim();
+      const pool = q.length >= 2 ? [...supabasePlaces, ...gbptmPlaces] : supabasePlaces;
+      const matches = q.length === 0
+        ? supabasePlaces
+        : pool.filter(p => p.label.toLowerCase().includes(q)).slice(0, 50);
+
+      placeDropdown.innerHTML = '';
+      positionPlaceDropdown();
+
+      if (matches.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'no-results';
+        li.textContent = q.length < 2 ? 'Type at least 2 characters to search all places…' : 'No places found';
+        placeDropdown.appendChild(li);
+      } else {
+        matches.forEach(p => {
+          const li = document.createElement('li');
+          li.textContent = p.label;
+          li.setAttribute('role', 'option');
+          li.addEventListener('mousedown', async (e) => {
+            e.preventDefault();
+            placeSearch.value = p.label;
+            placeDropdown.classList.remove('open');
+
+            if (p.source === 'supabase') {
+              placeHidden.value = p.id;
+              return;
+            }
+
+            placeHidden.value = '';
+            placeLoading.style.display = 'block';
+            submitBtn.disabled = true;
+
+            try {
+              const res = await fetch('/api/partner-portal/places', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gbptm_id: p.id, name: p.label.split(' \u2014 ')[0], ...p.gbptm }),
+              });
+              const json = await res.json();
+              if (res.ok) {
+                placeHidden.value = json.id;
+              } else {
+                showToast(json.error ?? 'Could not save place. Try again.');
+                placeSearch.value = '';
+              }
+            } catch {
+              showToast('Network error saving place. Try again.');
+              placeSearch.value = '';
+            } finally {
+              placeLoading.style.display = 'none';
+              submitBtn.disabled = false;
+            }
+          });
+          placeDropdown.appendChild(li);
+        });
+      }
+
+      placeDropdown.classList.add('open');
+    }
+
+    placeSearch.addEventListener('input', async () => {
+      placeHidden.value = '';
+      if (placeSearch.value.length >= 2) await loadGbptm();
+      renderPlaceDropdown(placeSearch.value);
+    });
+    placeSearch.addEventListener('focus', () => renderPlaceDropdown(placeSearch.value));
+    placeSearch.addEventListener('blur', () => {
+      setTimeout(() => placeDropdown.classList.remove('open'), 150);
+    });
+
+    const _origCloseModal = (window as any).closeModal as () => void;
+    // @ts-ignore
+    window.closeModal = function closeModal() {
+      placeSearch.value = '';
+      placeHidden.value = '';
+      placeLoading.style.display = 'none';
+      placeDropdown.classList.remove('open');
+      _origCloseModal();
+    }
+
+    // @ts-ignore
+    window.toggleActive = async function toggleActive(offerId: number, active: boolean) {
+      try {
+        const res = await fetch(`/api/partner-portal/offers/${offerId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active }),
+        });
+        if (res.ok) {
+          showToast(active ? 'Offer activated' : 'Offer paused');
+          const row = document.getElementById(`offer-${offerId}`);
+          if (row) {
+            const badge = row.querySelector('.badge')!;
+            badge.className = `badge ${active ? 'badge-active' : 'badge-paused'}`;
+            badge.textContent = active ? 'Active' : 'Paused';
+            const btn = row.querySelector('.act-btn.pause, .act-btn.activate') as HTMLButtonElement;
+            if (btn) {
+              btn.className = `act-btn ${active ? 'pause' : 'activate'}`;
+              btn.textContent = active ? 'Pause' : 'Activate';
+              btn.setAttribute('onclick', `toggleActive(${offerId}, ${!active})`);
+            }
+          }
+        } else {
+          showToast('Could not update offer. Please try again.');
+        }
+      } catch {
+        showToast('Network error. Please check your connection and try again.');
+      }
+    }
+
+    // @ts-ignore
+    window.confirmRemove = async function confirmRemove(offerId: number) {
+      const btn = document.getElementById(`remove-btn-${offerId}`) as HTMLButtonElement;
+      if (!btn) return;
+
+      if (!pendingRemove.has(offerId)) {
+        pendingRemove.add(offerId);
+        btn.textContent = 'Sure?';
+        btn.classList.add('confirm');
+        setTimeout(() => {
+          if (pendingRemove.has(offerId)) {
+            pendingRemove.delete(offerId);
+            btn.textContent = 'Remove';
+            btn.classList.remove('confirm');
+          }
+        }, 3000);
+        return;
+      }
+
+      pendingRemove.delete(offerId);
+      try {
+        const res = await fetch(`/api/partner-portal/offers/${offerId}`, { method: 'DELETE' });
+        if (res.ok) {
+          document.getElementById(`offer-${offerId}`)?.remove();
+          showToast('Offer removed');
+        } else {
+          showToast('Could not remove offer. Please try again.');
+        }
+      } catch {
+        showToast('Network error. Please check your connection and try again.');
+      }
+    }
+
+    document.getElementById('add-offer-form')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target as HTMLFormElement;
+
+      if (!placeHidden.value) {
+        showToast('Please select a place from the dropdown.');
+        placeSearch.focus();
+        return;
+      }
+
+      submitBtn.textContent = 'Adding…';
+      submitBtn.disabled = true;
+
+      const data: Record<string, string | number | null> = {};
+      new FormData(form).forEach((val, key) => {
+        const s = val.toString().trim();
+        if (s === '') { data[key] = null; return; }
+        if (key === 'max_per_family') {
+          data[key] = Number(s);
+        } else {
+          data[key] = s;
+        }
+      });
+
+      try {
+        const res = await fetch('/api/partner-portal/offers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (res.ok) {
+          (window as any).closeModal();
+          showToast('Offer added!');
+          setTimeout(() => window.location.reload(), 1200);
+        } else {
+          const body = await res.json().catch(() => ({}));
+          showToast(body.error ?? 'Could not add offer. Please try again.');
+        }
+      } catch {
+        showToast('Network error. Please check your connection and try again.');
+      } finally {
+        submitBtn.textContent = 'Add Offer';
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</StudioLayout>
