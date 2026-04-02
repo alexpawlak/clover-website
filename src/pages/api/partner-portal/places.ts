@@ -22,15 +22,27 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return new Response(JSON.stringify({ error: 'gbptm_id, name, lat and lon are required' }), { status: 400 });
   }
 
-  // Check if this GBPTM place was already imported
-  const { data: existing } = await supabaseAdmin
+  // Check if this GBPTM place was already imported. The production schema no longer
+  // exposes a `metadata` column, so match on stable imported-place fields instead.
+  let existingQuery = supabaseAdmin
     .from('places')
     .select('id')
-    .filter('metadata->>gbptm_id', 'eq', String(gbptm_id))
-    .maybeSingle();
+    .eq('source', 'import_gbptm')
+    .eq('name', String(name));
 
-  if (existing) {
-    return new Response(JSON.stringify({ id: existing.id }), { status: 200 });
+  if (town) existingQuery = existingQuery.eq('city', String(town));
+  if (address1) existingQuery = existingQuery.eq('address_line1', String(address1));
+  if (postcode) existingQuery = existingQuery.eq('postal_code', String(postcode));
+
+  const { data: existing, error: existingError } = await existingQuery.limit(1);
+
+  if (existingError) {
+    console.error('Lookup existing place error:', existingError);
+    return new Response(JSON.stringify({ error: existingError.message }), { status: 500 });
+  }
+
+  if (existing && existing.length > 0) {
+    return new Response(JSON.stringify({ id: existing[0].id }), { status: 200 });
   }
 
   // Insert as a new approved place
@@ -46,7 +58,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       status: 'approved',
       source: 'import_gbptm',
       amenities: { changing_table: true },
-      metadata: { gbptm_id: String(gbptm_id) },
     })
     .select('id')
     .single();
