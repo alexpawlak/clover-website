@@ -22,16 +22,17 @@ const allPlacesData = (places ?? []).map(pl => ({
 }));
 ---
 
-<StudioLayout title={`Photos — ${STUDIO_NAME}`} active="photos">
+<StudioLayout title={`Photos — ${STUDIO_NAME}`} active="photos" widthMode="wide">
   <div class="photo-manager">
     <div class="photo-toolbar">
-      <div class="photo-search-field">
-        <label for="photo-place-search">Search a POI to manage photos</label>
-        <div class="photo-search-picker">
-          <input type="text" id="photo-place-search" class="photo-search-input" placeholder="Search by place name..." autocomplete="off" />
-          <ul class="photo-search-dropdown" id="photo-place-dropdown" role="listbox"></ul>
-        </div>
-        <div class="photo-search-help">When no search is active, the latest uploaded photos appear first for quick review.</div>
+      <div class="photo-search-picker">
+        <input type="text" id="photo-place-search" class="photo-search-input" placeholder="Search by place name..." autocomplete="off" aria-label="Search POI photos" />
+        <ul class="photo-search-dropdown" id="photo-place-dropdown" role="listbox"></ul>
+      </div>
+      <div class="photo-size-selector" id="photo-size-selector" role="group" aria-label="Photo size">
+        <button type="button" class="photo-size-option" data-size="compact" aria-label="Small photos">S</button>
+        <button type="button" class="photo-size-option" data-size="comfortable" aria-label="Medium photos">M</button>
+        <button type="button" class="photo-size-option" data-size="large" aria-label="Large photos">L</button>
       </div>
     </div>
 
@@ -63,6 +64,7 @@ const allPlacesData = (places ?? []).map(pl => ({
       place_id: string;
       url: string;
       created_at: string;
+      display_order?: number | null;
       session_id?: string | null;
       user_id?: string | null;
       place_name?: string | null;
@@ -80,11 +82,26 @@ const allPlacesData = (places ?? []).map(pl => ({
     const photoEmpty = document.getElementById('photo-empty') as HTMLDivElement;
     const photoSummaryTitle = document.getElementById('photo-summary-title') as HTMLDivElement;
     const photoSummaryMeta = document.getElementById('photo-summary-meta') as HTMLDivElement;
+    const photoSizeSelector = document.getElementById('photo-size-selector') as HTMLDivElement;
+
+    type DropPosition = 'before' | 'after';
+    type PhotoSize = 'compact' | 'comfortable' | 'large';
+    const trashIcon = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M9 3.75A2.25 2.25 0 0 0 6.75 6H4.5a.75.75 0 0 0 0 1.5h.81l.72 10.18A2.25 2.25 0 0 0 8.27 19.8h7.46a2.25 2.25 0 0 0 2.24-2.12l.72-10.18h.81a.75.75 0 0 0 0-1.5h-2.25A2.25 2.25 0 0 0 15 3.75H9Zm0 1.5h6A.75.75 0 0 1 15.75 6h-7.5A.75.75 0 0 1 9 5.25Zm-.22 4.5a.75.75 0 0 1 .75.7l.25 5.5a.75.75 0 1 1-1.5.06l-.25-5.5a.75.75 0 0 1 .7-.76h.05Zm6.44 0a.75.75 0 0 1 .7.76l-.25 5.5a.75.75 0 1 1-1.5-.06l.25-5.5a.75.75 0 0 1 .75-.7h.05ZM12 9.75a.75.75 0 0 1 .75.75V16a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Z"/>
+      </svg>
+    `;
 
     let photoFeedMode: 'latest' | 'place' = 'latest';
     let selectedPhotoPlace: PlaceOption | null = null;
     let currentPhotos: PlacePhoto[] = [];
+    let lastCommittedPlacePhotos: PlacePhoto[] = [];
     const pendingPhotoDelete = new Set<string>();
+    let draggedPhotoId: string | null = null;
+    let dragPreviewTargetId: string | null = null;
+    let dragPreviewPosition: DropPosition | null = null;
+    let isSavingPhotoOrder = false;
+    let photoSize: PhotoSize = 'comfortable';
 
     function showToast(msg: string) {
       const el = document.getElementById('toast')!;
@@ -103,8 +120,52 @@ const allPlacesData = (places ?? []).map(pl => ({
       });
     }
 
+    function getPhotoTitle(photo: PlacePhoto) {
+      if (photoFeedMode === 'latest') {
+        return photo.place_name ?? photo.place_id;
+      }
+
+      return `Position ${(photo.display_order ?? currentPhotos.indexOf(photo)) + 1}`;
+    }
+
+    function readStoredPhotoSize(): PhotoSize {
+      try {
+        const raw = window.localStorage.getItem('partner-portal-photo-size');
+        if (raw === 'compact' || raw === 'comfortable' || raw === 'large') return raw;
+      } catch {
+        return 'comfortable';
+      }
+      return 'comfortable';
+    }
+
+    function applyPhotoSize() {
+      photoGallery.classList.remove('photo-gallery-size-compact', 'photo-gallery-size-comfortable', 'photo-gallery-size-large');
+      photoGallery.classList.add(`photo-gallery-size-${photoSize}`);
+
+      photoSizeSelector.querySelectorAll<HTMLButtonElement>('.photo-size-option').forEach(button => {
+        const isActive = button.dataset.size === photoSize;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      });
+    }
+
+    function setPhotoSize(nextSize: PhotoSize) {
+      if (photoSize === nextSize) return;
+      photoSize = nextSize;
+      try {
+        window.localStorage.setItem('partner-portal-photo-size', nextSize);
+      } catch {
+        // Ignore storage failures and keep the in-memory choice.
+      }
+      applyPhotoSize();
+      renderPhotoState();
+    }
+
     function renderPhotoState() {
       photoGallery.innerHTML = '';
+      photoGallery.classList.toggle('photo-gallery-ordered', photoFeedMode === 'place');
+      photoGallery.classList.toggle('photo-gallery-latest', photoFeedMode === 'latest');
+      applyPhotoSize();
 
       if (photoFeedMode === 'latest') {
         photoSummaryTitle.textContent = 'Latest uploaded photos';
@@ -113,7 +174,13 @@ const allPlacesData = (places ?? []).map(pl => ({
       } else {
         photoSummaryTitle.textContent = 'Latest uploaded photos';
       }
-      photoSummaryMeta.textContent = `${currentPhotos.length} photo${currentPhotos.length === 1 ? '' : 's'}`;
+      const summaryParts = [`${currentPhotos.length} photo${currentPhotos.length === 1 ? '' : 's'}`];
+      if (photoFeedMode === 'place') summaryParts.push('First photo appears first in the app');
+      if (draggedPhotoId && dragPreviewTargetId && dragPreviewPosition) {
+        summaryParts.push(`Preview: insert ${dragPreviewPosition}`);
+      }
+      if (isSavingPhotoOrder) summaryParts.push('Saving order...');
+      photoSummaryMeta.textContent = summaryParts.join(' • ');
 
       if (currentPhotos.length === 0) {
         photoEmpty.hidden = false;
@@ -129,6 +196,10 @@ const allPlacesData = (places ?? []).map(pl => ({
         const card = document.createElement('article');
         card.className = 'photo-card';
         card.id = `photo-${photo.id}`;
+        card.dataset.photoId = photo.id;
+        if (photoFeedMode === 'place' && photo.id === dragPreviewTargetId && dragPreviewPosition) {
+          card.classList.add('photo-card-drop-target', `photo-card-drop-target-${dragPreviewPosition}`);
+        }
 
         const thumbWrap = document.createElement('div');
         thumbWrap.className = 'photo-thumb-wrap';
@@ -149,30 +220,51 @@ const allPlacesData = (places ?? []).map(pl => ({
         const deleteBtn = document.createElement('button');
         deleteBtn.type = 'button';
         deleteBtn.className = 'photo-delete-btn';
-        deleteBtn.textContent = pendingPhotoDelete.has(photo.id) ? 'Confirm?' : 'Remove';
+        deleteBtn.innerHTML = trashIcon;
+        deleteBtn.setAttribute('aria-label', pendingPhotoDelete.has(photo.id) ? 'Confirm remove photo' : 'Remove photo');
+        deleteBtn.title = pendingPhotoDelete.has(photo.id) ? 'Confirm remove photo' : 'Remove photo';
         if (pendingPhotoDelete.has(photo.id)) deleteBtn.classList.add('confirm');
         deleteBtn.addEventListener('click', () => void handlePhotoDelete(photo.id));
 
-        const body = document.createElement('div');
-        body.className = 'photo-card-body';
+        if (photoFeedMode === 'place') {
+          card.draggable = !isSavingPhotoOrder;
+          card.classList.add('photo-card-draggable');
+          card.addEventListener('dragstart', (event) => handlePhotoDragStart(event, photo.id));
+          card.addEventListener('dragover', (event) => handlePhotoDragOver(event, photo.id));
+          card.addEventListener('drop', (event) => void handlePhotoDrop(event, photo.id));
+          card.addEventListener('dragend', handlePhotoDragEnd);
+        }
 
-        const date = document.createElement('div');
-        date.className = 'photo-date';
-        date.textContent = formatPhotoDate(photo.created_at);
+        const overlay = document.createElement('div');
+        overlay.className = 'photo-card-overlay';
 
-        const submeta = document.createElement('div');
-        submeta.className = 'photo-submeta';
-        const metaParts: string[] = [];
-        if (photoFeedMode === 'latest') metaParts.push(placeLabel);
-        metaParts.push(photo.user_id ? `User ${photo.user_id}` : (photo.session_id ? `Session ${photo.session_id}` : 'Community upload'));
-        submeta.textContent = metaParts.join(' • ');
+        const title = document.createElement('div');
+        title.className = 'photo-card-title';
+        title.textContent = getPhotoTitle(photo);
 
+        const hoverMeta = document.createElement('div');
+        hoverMeta.className = 'photo-card-hover-meta';
+        hoverMeta.textContent = formatPhotoDate(photo.created_at);
+
+        if (photoFeedMode === 'place') {
+          const dragHint = document.createElement('div');
+          dragHint.className = 'photo-order-hint';
+          if (isSavingPhotoOrder) {
+            dragHint.textContent = 'Saving new order...';
+          } else if (photo.id === dragPreviewTargetId && dragPreviewPosition) {
+            dragHint.textContent = dragPreviewPosition === 'before' ? 'Drop before this photo' : 'Drop after this photo';
+          } else {
+            dragHint.textContent = 'Drag to reorder';
+          }
+          hoverMeta.appendChild(dragHint);
+        }
+
+        overlay.appendChild(title);
+        overlay.appendChild(hoverMeta);
         thumbWrap.appendChild(img);
+        thumbWrap.appendChild(overlay);
         thumbWrap.appendChild(deleteBtn);
-        body.appendChild(date);
-        body.appendChild(submeta);
         card.appendChild(thumbWrap);
-        card.appendChild(body);
         photoGallery.appendChild(card);
       });
     }
@@ -180,6 +272,11 @@ const allPlacesData = (places ?? []).map(pl => ({
     async function loadLatestPhotos() {
       photoFeedMode = 'latest';
       selectedPhotoPlace = null;
+      lastCommittedPlacePhotos = [];
+      draggedPhotoId = null;
+      dragPreviewTargetId = null;
+      dragPreviewPosition = null;
+      isSavingPhotoOrder = false;
       photoSummaryTitle.textContent = 'Loading latest uploaded photos...';
       photoSummaryMeta.textContent = '';
       photoEmpty.hidden = true;
@@ -206,6 +303,10 @@ const allPlacesData = (places ?? []).map(pl => ({
     async function loadPhotoGallery(place: PlaceOption) {
       photoFeedMode = 'place';
       selectedPhotoPlace = place;
+      draggedPhotoId = null;
+      dragPreviewTargetId = null;
+      dragPreviewPosition = null;
+      isSavingPhotoOrder = false;
       photoSummaryTitle.textContent = `Loading photos for ${place.name}${place.city ? `, ${place.city}` : ''}...`;
       photoSummaryMeta.textContent = '';
       photoEmpty.hidden = true;
@@ -220,6 +321,7 @@ const allPlacesData = (places ?? []).map(pl => ({
           currentPhotos = [];
         } else {
           currentPhotos = Array.isArray(body) ? body : [];
+          lastCommittedPlacePhotos = currentPhotos.map(photo => ({ ...photo }));
         }
       } catch {
         currentPhotos = [];
@@ -236,8 +338,9 @@ const allPlacesData = (places ?? []).map(pl => ({
       if (!pendingPhotoDelete.has(photoId)) {
         pendingPhotoDelete.add(photoId);
         if (btn) {
-          btn.textContent = 'Confirm?';
           btn.classList.add('confirm');
+          btn.setAttribute('aria-label', 'Confirm remove photo');
+          btn.title = 'Confirm remove photo';
         }
         setTimeout(() => {
           if (pendingPhotoDelete.has(photoId)) {
@@ -251,7 +354,8 @@ const allPlacesData = (places ?? []).map(pl => ({
       pendingPhotoDelete.delete(photoId);
       if (btn) {
         btn.disabled = true;
-        btn.textContent = 'Removing...';
+        btn.setAttribute('aria-label', 'Removing photo');
+        btn.title = 'Removing photo';
       }
 
       try {
@@ -264,12 +368,156 @@ const allPlacesData = (places ?? []).map(pl => ({
         }
 
         currentPhotos = currentPhotos.filter(item => item.id !== photoId);
+        if (photoFeedMode === 'place') {
+          dragPreviewTargetId = null;
+          dragPreviewPosition = null;
+          draggedPhotoId = null;
+          currentPhotos = currentPhotos.map((item, index) => ({ ...item, display_order: index }));
+          lastCommittedPlacePhotos = currentPhotos.map(photo => ({ ...photo }));
+        }
         showToast('Photo removed');
         renderPhotoState();
       } catch {
         showToast('Network error removing photo. Please try again.');
         renderPhotoState();
       }
+    }
+
+    function handlePhotoDragStart(event: DragEvent, photoId: string) {
+      if (photoFeedMode !== 'place' || isSavingPhotoOrder) return;
+      draggedPhotoId = photoId;
+      dragPreviewTargetId = null;
+      dragPreviewPosition = null;
+      event.dataTransfer?.setData('text/plain', photoId);
+      event.dataTransfer!.effectAllowed = 'move';
+      const card = document.getElementById(`photo-${photoId}`);
+      card?.classList.add('dragging');
+    }
+
+    function getDragPreviewPosition(event: DragEvent, photoId: string): DropPosition | null {
+      const card = document.getElementById(`photo-${photoId}`);
+      if (!card) return null;
+      const bounds = card.getBoundingClientRect();
+      return event.clientY < bounds.top + (bounds.height / 2) ? 'before' : 'after';
+    }
+
+    function clearPhotoDragPreview(resetToCommitted = true) {
+      dragPreviewTargetId = null;
+      dragPreviewPosition = null;
+      if (resetToCommitted) {
+        currentPhotos = lastCommittedPlacePhotos.map(photo => ({ ...photo }));
+      }
+    }
+
+    function handlePhotoDragOver(event: DragEvent, targetPhotoId: string) {
+      if (photoFeedMode !== 'place' || isSavingPhotoOrder || !draggedPhotoId) return;
+      event.preventDefault();
+      event.dataTransfer!.dropEffect = 'move';
+
+      const dropPosition = getDragPreviewPosition(event, targetPhotoId);
+      if (!dropPosition) return;
+
+      const previewSource = lastCommittedPlacePhotos.length > 0
+        ? lastCommittedPlacePhotos
+        : currentPhotos;
+      const nextPhotos = reorderPhotos(previewSource, draggedPhotoId, targetPhotoId, dropPosition);
+
+      dragPreviewTargetId = targetPhotoId;
+      dragPreviewPosition = dropPosition;
+      currentPhotos = nextPhotos ?? previewSource.map(photo => ({ ...photo }));
+      renderPhotoState();
+    }
+
+    function handlePhotoDragEnd() {
+      document.querySelectorAll('.photo-card.dragging').forEach(card => card.classList.remove('dragging'));
+      if (!isSavingPhotoOrder) {
+        clearPhotoDragPreview();
+        renderPhotoState();
+      }
+      draggedPhotoId = null;
+    }
+
+    function reorderPhotos(photos: PlacePhoto[], draggedId: string, targetId: string, position: DropPosition) {
+      const next = [...photos];
+      const fromIndex = next.findIndex(photo => photo.id === draggedId);
+      const toIndex = next.findIndex(photo => photo.id === targetId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return null;
+
+      const [moved] = next.splice(fromIndex, 1);
+      let insertIndex = toIndex;
+      if (fromIndex < toIndex) insertIndex -= 1;
+      if (position === 'after') insertIndex += 1;
+      next.splice(insertIndex, 0, moved);
+
+      if (next.every((photo, index) => photo.id === photos[index]?.id)) {
+        return null;
+      }
+
+      return next.map((photo, index) => ({ ...photo, display_order: index }));
+    }
+
+    async function persistPhotoOrder(nextPhotos: PlacePhoto[]) {
+      if (!selectedPhotoPlace) return;
+
+      isSavingPhotoOrder = true;
+      currentPhotos = nextPhotos;
+      renderPhotoState();
+
+      try {
+        const res = await fetch('/api/partner-portal/photos/order', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            place_id: selectedPhotoPlace.id,
+            photo_ids: nextPhotos.map(photo => photo.id),
+          }),
+        });
+        const body = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          currentPhotos = lastCommittedPlacePhotos.map(photo => ({ ...photo }));
+          dragPreviewTargetId = null;
+          dragPreviewPosition = null;
+          showToast(body?.error ?? 'Could not save photo order. Please try again.');
+          return;
+        }
+
+        lastCommittedPlacePhotos = nextPhotos.map(photo => ({ ...photo }));
+        dragPreviewTargetId = null;
+        dragPreviewPosition = null;
+        showToast('Photo order updated');
+      } catch {
+        currentPhotos = lastCommittedPlacePhotos.map(photo => ({ ...photo }));
+        dragPreviewTargetId = null;
+        dragPreviewPosition = null;
+        showToast('Network error saving photo order. Please try again.');
+      } finally {
+        isSavingPhotoOrder = false;
+        renderPhotoState();
+      }
+    }
+
+    async function handlePhotoDrop(event: DragEvent, targetPhotoId: string) {
+      if (photoFeedMode !== 'place' || isSavingPhotoOrder) return;
+      event.preventDefault();
+
+      const sourcePhotoId = draggedPhotoId ?? event.dataTransfer?.getData('text/plain') ?? null;
+      const dropPosition = getDragPreviewPosition(event, targetPhotoId);
+      if (!sourcePhotoId || sourcePhotoId === targetPhotoId || !dropPosition) return;
+
+      const previewSource = lastCommittedPlacePhotos.length > 0
+        ? lastCommittedPlacePhotos
+        : currentPhotos;
+      const nextPhotos = reorderPhotos(previewSource, sourcePhotoId, targetPhotoId, dropPosition);
+      if (!nextPhotos) {
+        clearPhotoDragPreview();
+        renderPhotoState();
+        return;
+      }
+
+      dragPreviewTargetId = null;
+      dragPreviewPosition = null;
+      await persistPhotoOrder(nextPhotos);
     }
 
     function renderPhotoSearchDropdown(query: string) {
@@ -323,6 +571,17 @@ const allPlacesData = (places ?? []).map(pl => ({
       setTimeout(() => photoPlaceDropdown.classList.remove('open'), 150);
     });
 
+    photoSizeSelector.querySelectorAll<HTMLButtonElement>('.photo-size-option').forEach(button => {
+      button.addEventListener('click', () => {
+        const nextSize = button.dataset.size;
+        if (nextSize === 'compact' || nextSize === 'comfortable' || nextSize === 'large') {
+          setPhotoSize(nextSize);
+        }
+      });
+    });
+
+    photoSize = readStoredPhotoSize();
+    applyPhotoSize();
     void loadLatestPhotos();
   </script>
 </StudioLayout>

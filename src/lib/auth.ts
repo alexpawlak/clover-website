@@ -10,9 +10,10 @@ export function setAuthCookies(
   accessToken: string,
   refreshToken: string,
 ) {
+  const isSecure = import.meta.env.PROD;
   const baseOpts = {
     httpOnly: true,
-    secure: true,
+    secure: isSecure,
     sameSite: 'lax' as const,
     path: '/',
   };

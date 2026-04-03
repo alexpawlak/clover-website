@@ -14,6 +14,7 @@ const { data: rows, error } = await supabaseAdmin
   .select(`
     id, description, code, active, valid_from, valid_to,
     hours_note, max_per_family, stock_note, created_at,
+    updated_at,
     partner:partners(id, name),
     place:places(id, name, city)
   `)
@@ -37,28 +38,27 @@ type Offer = {
   max_per_family: number | null;
   stock_note: string | null;
   created_at: string;
+  updated_at: string;
   partner: { id: number; name: string } | null;
   place: { id: string; name: string; city: string | null } | null;
 };
 
 const offerRows: Offer[] = (rows ?? []) as unknown as Offer[];
 
-const partnerMap = new Map<number, { name: string; offers: Offer[] }>();
-for (const row of offerRows) {
-  if (!row.partner) continue;
-  const pid = row.partner.id;
-  if (!partnerMap.has(pid)) {
-    partnerMap.set(pid, { name: row.partner.name, offers: [] });
-  }
-  partnerMap.get(pid)!.offers.push(row);
-}
-const partnerList = Array.from(partnerMap.entries()).sort((a, b) =>
-  a[1].name.localeCompare(b[1].name)
-);
-
 function formatDate(iso: string | null) {
   if (!iso) return '';
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatDateTime(iso: string | null) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 const allPlacesData = (places ?? []).map(pl => ({
@@ -67,6 +67,11 @@ const allPlacesData = (places ?? []).map(pl => ({
   city: pl.city ?? null,
   label: pl.name + (pl.city ? ` \u2014 ${pl.city}` : ''),
 }));
+const trashIcon = `
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M9 3.75A2.25 2.25 0 0 0 6.75 6H4.5a.75.75 0 0 0 0 1.5h.81l.72 10.18A2.25 2.25 0 0 0 8.27 19.8h7.46a2.25 2.25 0 0 0 2.24-2.12l.72-10.18h.81a.75.75 0 0 0 0-1.5h-2.25A2.25 2.25 0 0 0 15 3.75H9Zm0 1.5h6A.75.75 0 0 1 15.75 6h-7.5A.75.75 0 0 1 9 5.25Zm-.22 4.5a.75.75 0 0 1 .75.7l.25 5.5a.75.75 0 1 1-1.5.06l-.25-5.5a.75.75 0 0 1 .7-.76h.05Zm6.44 0a.75.75 0 0 1 .7.76l-.25 5.5a.75.75 0 1 1-1.5-.06l.25-5.5a.75.75 0 0 1 .75-.7h.05ZM12 9.75a.75.75 0 0 1 .75.75V16a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75Z"/>
+  </svg>
+`;
 ---
 
 <StudioLayout title={`Offers — ${STUDIO_NAME}`} active="offers">
@@ -74,80 +79,79 @@ const allPlacesData = (places ?? []).map(pl => ({
     <button class="add-btn" id="open-modal-btn">+ Add Offer</button>
   </div>
 
-  {partnerList.length === 0 ? (
+  {offerRows.length === 0 ? (
     <div class="no-partners">
       <div class="empty-icon">🤝</div>
       <p>No partners yet. Add an offer to get started.</p>
     </div>
   ) : (
-    partnerList.map(([partnerId, { name, offers }]) => (
-      <div class="partner-card open" data-partner-id={partnerId}>
-        <div class="partner-header" onclick="togglePartner(this)">
-          <span class="partner-name">{name}</span>
-          <div style="display:flex;align-items:center;gap:0.5rem;">
-            <span class="partner-count">{offers.length} offer{offers.length !== 1 ? 's' : ''}</span>
-            <span class="chevron">▼</span>
-          </div>
-        </div>
-        <div class="partner-body">
-          {offers.length === 0 ? (
-            <div class="empty">
-              <div class="empty-icon">📭</div>
-              <p>No offers yet.</p>
+    <div class="offer-stack">
+      {offerRows.map((offer) => (
+        <article class="offer-card-solo" id={`offer-${offer.id}`}>
+          <div class="offer-card-top">
+            <div class="offer-card-head">
+              <div class="offer-card-title">{offer.partner?.name ?? 'Unnamed partner'}</div>
+              {offer.place && (
+                <div class="offer-card-place">
+                  {offer.place.name}{offer.place.city ? `, ${offer.place.city}` : ''}
+                </div>
+              )}
             </div>
-          ) : (
-            offers.map((offer) => (
-              <div class="offer-row" id={`offer-${offer.id}`}>
-                <div class="offer-main">
-                  {offer.place && (
-                    <div class="offer-place">
-                      {offer.place.name}{offer.place.city ? `, ${offer.place.city}` : ''}
-                    </div>
-                  )}
-                  <div class="offer-desc">{offer.description ?? '—'}</div>
-                  <div class="offer-meta">
-                    {offer.code && <span class="offer-code">{offer.code}</span>}
-                    {(offer.valid_from || offer.valid_to) && (
-                      <span class="offer-dates">
-                        {offer.valid_from ? formatDate(offer.valid_from) : ''}
-                        {offer.valid_from && offer.valid_to ? ' → ' : ''}
-                        {offer.valid_to ? formatDate(offer.valid_to) : ''}
-                      </span>
-                    )}
-                    {offer.hours_note && <span class="offer-hours">🕐 {offer.hours_note}</span>}
-                  </div>
-                </div>
-                <div class="offer-actions">
-                  <span class={`badge ${offer.active ? 'badge-active' : 'badge-paused'}`}>
-                    {offer.active ? 'Active' : 'Paused'}
-                  </span>
-                  <button
-                    class="act-btn"
-                    data-offer-id={offer.id}
-                    data-place-id={offer.place?.id ?? ''}
-                    data-place-label={offer.place ? `${offer.place.name}${offer.place.city ? ` \u2014 ${offer.place.city}` : ''}` : ''}
-                    data-description={offer.description ?? ''}
-                    data-code={offer.code ?? ''}
-                    data-valid-from={offer.valid_from ? offer.valid_from.slice(0, 10) : ''}
-                    data-valid-to={offer.valid_to ? offer.valid_to.slice(0, 10) : ''}
-                    data-hours-note={offer.hours_note ?? ''}
-                    data-max-per-family={offer.max_per_family ?? ''}
-                    data-stock-note={offer.stock_note ?? ''}
-                    onclick="openEditOffer(this)"
-                  >Edit</button>
-                  {offer.active ? (
-                    <button class="act-btn pause" onclick={`toggleActive(${offer.id}, false)`}>Pause</button>
-                  ) : (
-                    <button class="act-btn activate" onclick={`toggleActive(${offer.id}, true)`}>Activate</button>
-                  )}
-                  <button class="act-btn remove" id={`remove-btn-${offer.id}`} onclick={`confirmRemove(${offer.id})`}>Remove</button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    ))
+            <span class={`badge ${offer.active ? 'badge-active' : 'badge-paused'}`}>
+              {offer.active ? 'Active' : 'Paused'}
+            </span>
+          </div>
+
+          <div class="offer-card-desc">{offer.description ?? '—'}</div>
+
+          <div class="offer-card-details">
+            {offer.code && <span class="offer-detail-chip code">{offer.code}</span>}
+            {(offer.valid_from || offer.valid_to) && (
+              <span class="offer-detail-chip">
+                {offer.valid_from ? formatDate(offer.valid_from) : ''}
+                {offer.valid_from && offer.valid_to ? ' → ' : ''}
+                {offer.valid_to ? formatDate(offer.valid_to) : ''}
+              </span>
+            )}
+            {offer.hours_note && <span class="offer-detail-chip">Hours: {offer.hours_note}</span>}
+            {offer.max_per_family != null && <span class="offer-detail-chip">Max per family: {offer.max_per_family}</span>}
+            {offer.stock_note && <span class="offer-detail-chip">{offer.stock_note}</span>}
+          </div>
+
+          <div class="offer-last-edited">Last edited {formatDateTime(offer.updated_at)}</div>
+
+          <div class="offer-card-actions">
+            <div class="offer-card-actions-right">
+              {offer.active ? (
+                <button class="act-btn pause" onclick={`toggleActive(${offer.id}, false)`}>Pause</button>
+              ) : (
+                <button class="act-btn activate" onclick={`toggleActive(${offer.id}, true)`}>Activate</button>
+              )}
+              <button
+                class="act-btn"
+                data-offer-id={offer.id}
+                data-place-id={offer.place?.id ?? ''}
+                data-place-label={offer.place ? `${offer.place.name}${offer.place.city ? ` \u2014 ${offer.place.city}` : ''}` : ''}
+                data-description={offer.description ?? ''}
+                data-code={offer.code ?? ''}
+                data-valid-from={offer.valid_from ? offer.valid_from.slice(0, 10) : ''}
+                data-valid-to={offer.valid_to ? offer.valid_to.slice(0, 10) : ''}
+                data-hours-note={offer.hours_note ?? ''}
+                data-max-per-family={offer.max_per_family ?? ''}
+                data-stock-note={offer.stock_note ?? ''}
+                onclick="openEditOffer(this)"
+              >Edit</button>
+            </div>
+            <div class="offer-card-actions-left">
+              <button class="act-btn remove" id={`remove-btn-${offer.id}`} onclick={`confirmRemove(${offer.id})`} aria-label="Remove offer">
+                <Fragment set:html={trashIcon} />
+                <span>Remove</span>
+              </button>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
   )}
 
   <div class="modal-backdrop" id="modal-backdrop">
@@ -246,18 +250,6 @@ const allPlacesData = (places ?? []).map(pl => ({
       el.classList.add('show');
       setTimeout(() => el.classList.remove('show'), 3000);
     }
-
-    // @ts-ignore
-    window.togglePartner = function togglePartner(header: HTMLElement) {
-      const card = header.closest('.partner-card');
-      if (card) card.classList.toggle('open');
-      const body = card?.querySelector('.partner-body') as HTMLElement | null;
-      if (body) body.style.display = card?.classList.contains('open') ? '' : 'none';
-    }
-
-    document.querySelectorAll('.partner-card:not(.open) .partner-body').forEach(b => {
-      (b as HTMLElement).style.display = 'none';
-    });
 
     function openModal() {
       editingOfferId = null;
@@ -449,15 +441,18 @@ const allPlacesData = (places ?? []).map(pl => ({
     window.confirmRemove = async function confirmRemove(offerId: number) {
       const btn = document.getElementById(`remove-btn-${offerId}`) as HTMLButtonElement;
       if (!btn) return;
+      const label = btn.querySelector('span');
 
       if (!pendingRemove.has(offerId)) {
         pendingRemove.add(offerId);
-        btn.textContent = 'Sure?';
+        if (label) label.textContent = 'Sure?';
+        btn.setAttribute('aria-label', 'Confirm remove offer');
         btn.classList.add('confirm');
         setTimeout(() => {
           if (pendingRemove.has(offerId)) {
             pendingRemove.delete(offerId);
-            btn.textContent = 'Remove';
+            if (label) label.textContent = 'Remove';
+            btn.setAttribute('aria-label', 'Remove offer');
             btn.classList.remove('confirm');
           }
         }, 3000);
@@ -471,9 +466,15 @@ const allPlacesData = (places ?? []).map(pl => ({
           document.getElementById(`offer-${offerId}`)?.remove();
           showToast('Offer removed');
         } else {
+          if (label) label.textContent = 'Remove';
+          btn.setAttribute('aria-label', 'Remove offer');
+          btn.classList.remove('confirm');
           showToast('Could not remove offer. Please try again.');
         }
       } catch {
+        if (label) label.textContent = 'Remove';
+        btn.setAttribute('aria-label', 'Remove offer');
+        btn.classList.remove('confirm');
         showToast('Network error. Please check your connection and try again.');
       }
     }

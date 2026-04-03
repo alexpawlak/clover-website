@@ -1,13 +1,17 @@
 ---
-import { getStudioMeta, STUDIO_NAME, STUDIO_SUBTITLE } from '../lib/studio-meta';
+import { getStudioMeta, STUDIO_NAME } from '../lib/studio-meta';
 
 type Props = {
   title: string;
   active: 'offers' | 'photos';
+  widthMode?: 'default' | 'wide';
 };
 
-const { title, active } = Astro.props;
+const { title, active, widthMode = 'default' } = Astro.props;
 const studioMeta = getStudioMeta();
+const portalContainerClass = widthMode === 'wide'
+  ? 'portal-container portal-container-wide'
+  : 'portal-container';
 ---
 
 <!doctype html>
@@ -31,19 +35,37 @@ const studioMeta = getStudioMeta();
       .topbar {
         background: white;
         border-bottom: 1px solid #E5E7EB;
-        padding: 0 1.5rem;
-        min-height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        padding: 0.75rem 1rem 0.85rem;
         position: sticky;
         top: 0;
-        z-index: 10;
+        z-index: 50;
       }
-      .topbar-left { display: flex; align-items: center; gap: 0.625rem; }
-      .topbar-left img { width: 28px; height: 28px; }
+      .portal-container {
+        max-width: 820px;
+        margin: 0 auto;
+      }
+      .topbar-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 1rem;
+      }
+      .topbar-primary {
+        min-width: 0;
+      }
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        min-width: 0;
+      }
+      .topbar-left img { width: 28px; height: 28px; flex-shrink: 0; }
+      .topbar-brand {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+      }
       .topbar-title { font-size: 1.05rem; font-weight: 700; color: #111827; }
-      .topbar-subtitle { font-size: 0.78rem; color: #9CA3AF; }
       .signout-btn {
         background: none;
         border: 1.5px solid #E5E7EB;
@@ -53,40 +75,75 @@ const studioMeta = getStudioMeta();
         color: #6B7280;
         cursor: pointer;
         transition: border-color 0.15s, color 0.15s;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
       .signout-btn:hover { border-color: #E91E63; color: #E91E63; }
 
-      .main { max-width: 820px; margin: 0 auto; padding: 1.5rem 1rem 2rem; width: 100%; flex: 1; }
-      .view-tabs {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.25rem;
-        margin-bottom: 1rem;
-        border: 1px solid #E5E7EB;
-        border-radius: 999px;
-        background: #FFFFFF;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      .main {
+        padding: 1.25rem 1rem 2rem;
+        width: 100%;
+        flex: 1;
       }
-      .view-tab {
+      .topbar-nav {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 1.25rem;
+        width: 100%;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #F3F4F6;
+      }
+      .topbar-nav-link {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
         text-decoration: none;
-        border: none;
-        background: transparent;
         color: #6B7280;
-        border-radius: 999px;
-        padding: 0.5rem 0.95rem;
-        font-size: 0.86rem;
+        font-size: 0.92rem;
         font-weight: 600;
-        cursor: pointer;
-        transition: background 0.15s, color 0.15s;
+        line-height: 1.2;
+        white-space: nowrap;
+        padding: 0.1rem 0;
+        border-bottom: 2px solid transparent;
+        transition: color 0.15s, border-color 0.15s;
       }
-      .view-tab.active,
-      .view-tab[aria-current="page"] {
-        background: #111827;
-        color: #FFFFFF;
+      .topbar-nav-link:hover {
+        color: #111827;
+      }
+      .topbar-nav-link.active,
+      .topbar-nav-link[aria-current="page"] {
+        color: #111827;
+        border-bottom-color: #111827;
+      }
+      @media (min-width: 768px) {
+        .topbar {
+          padding: 0.85rem 1.5rem;
+        }
+        .topbar-row {
+          align-items: center;
+        }
+        .topbar-primary {
+          display: flex;
+          align-items: center;
+          gap: 2rem;
+          min-width: 0;
+        }
+        .topbar-nav {
+          width: auto;
+          margin-top: 0;
+          padding-top: 0;
+          border-top: 0;
+          flex-shrink: 0;
+        }
+        .signout-btn {
+          justify-self: end;
+        }
+      }
+      @media (min-width: 1100px) {
+        .portal-container.portal-container-wide {
+          max-width: 1360px;
+        }
       }
 
       .add-bar {
@@ -186,13 +243,17 @@ const studioMeta = getStudioMeta();
         border: 1.5px solid #E5E7EB;
         background: white;
         border-radius: 0.5rem;
-        padding: 0.3rem 0.75rem;
+        padding: 0.42rem 0.78rem;
         font-size: 0.8rem;
-        font-weight: 500;
+        font-weight: 600;
         cursor: pointer;
         white-space: nowrap;
         transition: all 0.15s;
         color: #374151;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
       }
       .act-btn:hover { border-color: #9CA3AF; }
       .act-btn.pause:hover { border-color: #F59E0B; color: #B45309; }
@@ -200,6 +261,100 @@ const studioMeta = getStudioMeta();
       .act-btn.remove { color: #EF4444; border-color: #FECACA; }
       .act-btn.remove:hover { background: #FEF2F2; }
       .act-btn.confirm { background: #EF4444; color: white; border-color: #EF4444; }
+      .act-btn svg,
+      .photo-delete-btn svg {
+        width: 0.95rem;
+        height: 0.95rem;
+        display: block;
+        fill: currentColor;
+        flex-shrink: 0;
+      }
+      .act-btn.remove {
+        margin-left: auto;
+      }
+
+      .offer-stack {
+        display: grid;
+        gap: 1rem;
+      }
+      .offer-card-solo {
+        background: #FFFFFF;
+        border-radius: 1rem;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+        padding: 1.1rem 1.15rem;
+        border: 1px solid #EEF0F3;
+      }
+      .offer-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 0.85rem;
+      }
+      .offer-card-head {
+        min-width: 0;
+      }
+      .offer-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111827;
+        line-height: 1.25;
+      }
+      .offer-card-place {
+        margin-top: 0.2rem;
+        font-size: 0.82rem;
+        color: #6B7280;
+      }
+      .offer-card-desc {
+        font-size: 0.96rem;
+        color: #111827;
+        line-height: 1.45;
+      }
+      .offer-card-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.85rem;
+      }
+      .offer-detail-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.78rem;
+        color: #4B5563;
+        background: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        border-radius: 999px;
+        padding: 0.32rem 0.65rem;
+      }
+      .offer-detail-chip.code {
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        background: #F3F4F6;
+      }
+      .offer-card-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 1rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid #F3F4F6;
+      }
+      .offer-card-actions-left,
+      .offer-card-actions-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .offer-card-actions-right {
+        flex: 1;
+      }
+      .offer-last-edited {
+        margin-top: 0.75rem;
+        font-size: 0.75rem;
+        color: #9CA3AF;
+      }
 
       .modal-backdrop {
         display: none;
@@ -358,38 +513,60 @@ const studioMeta = getStudioMeta();
       .photo-manager {
         background: #FFFFFF;
         border-radius: 1rem;
-        padding: 1rem;
+        padding: 0.85rem;
         box-shadow: 0 1px 6px rgba(0,0,0,0.06);
       }
       .photo-toolbar {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 0.875rem;
-        margin-bottom: 1rem;
-      }
-      .photo-search-field label {
-        display: block;
-        margin-bottom: 0.4rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: #374151;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        flex-wrap: nowrap;
       }
       .photo-search-picker { position: relative; }
       .photo-search-input {
         width: 100%;
-        padding: 0.75rem 0.875rem;
-        border: 1.5px solid #E5E7EB;
-        border-radius: 0.75rem;
-        font-size: 0.95rem;
+        min-width: 0;
+        padding: 0.58rem 0.78rem;
+        border: 1px solid #E5E7EB;
+        border-radius: 999px;
+        font-size: 0.88rem;
         color: #111827;
         background: white;
         outline: none;
       }
       .photo-search-input:focus { border-color: #E91E63; }
-      .photo-search-help {
-        margin-top: 0.35rem;
-        font-size: 0.78rem;
-        color: #9CA3AF;
+      .photo-size-selector {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.18rem;
+        border: 1px solid #E5E7EB;
+        border-radius: 999px;
+        background: #FFFFFF;
+        box-shadow: 0 1px 4px rgba(17, 24, 39, 0.04);
+      }
+      .photo-size-option {
+        border: 0;
+        background: transparent;
+        color: #6B7280;
+        border-radius: 999px;
+        min-width: 2rem;
+        height: 2rem;
+        padding: 0 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        letter-spacing: 0.03em;
+      }
+      .photo-size-option:hover {
+        background: #F3F4F6;
+        color: #111827;
+      }
+      .photo-size-option.active {
+        background: #111827;
+        color: #FFFFFF;
       }
       .photo-search-dropdown {
         display: none;
@@ -431,75 +608,195 @@ const studioMeta = getStudioMeta();
         align-items: center;
         justify-content: space-between;
         gap: 0.75rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
         min-height: 2rem;
       }
       .photo-summary-title {
-        font-size: 0.95rem;
-        color: #374151;
+        font-size: 0.88rem;
+        color: #4B5563;
       }
       .photo-summary-meta {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: #9CA3AF;
         white-space: nowrap;
       }
       .photo-gallery {
         column-count: 1;
-        column-gap: 0.9rem;
+        column-gap: 0.18rem;
       }
+      .photo-gallery.photo-gallery-ordered {
+        column-count: auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(var(--photo-card-min, 220px), 1fr));
+        gap: 0.18rem;
+      }
+      .photo-gallery.photo-gallery-size-compact { --photo-card-min: 160px; }
+      .photo-gallery.photo-gallery-size-comfortable { --photo-card-min: 220px; }
+      .photo-gallery.photo-gallery-size-large { --photo-card-min: 320px; }
       @media (min-width: 640px) {
-        .photo-gallery { column-count: 2; }
+        .photo-gallery.photo-gallery-latest.photo-gallery-size-compact { column-count: 3; }
+        .photo-gallery.photo-gallery-latest.photo-gallery-size-comfortable { column-count: 2; }
+        .photo-gallery.photo-gallery-latest.photo-gallery-size-large { column-count: 2; }
       }
       @media (min-width: 900px) {
-        .photo-gallery { column-count: 3; }
+        .photo-gallery.photo-gallery-latest.photo-gallery-size-compact { column-count: 6; }
+        .photo-gallery.photo-gallery-latest.photo-gallery-size-comfortable { column-count: 4; }
+        .photo-gallery.photo-gallery-latest.photo-gallery-size-large { column-count: 3; }
+      }
+      @media (max-width: 720px) {
+        .photo-toolbar {
+          flex-wrap: wrap;
+        }
+        .photo-size-selector {
+          margin-left: auto;
+        }
+        .photo-size-option {
+          text-align: center;
+        }
+        .offer-card-actions {
+          align-items: stretch;
+        }
+        .offer-card-actions-left,
+        .offer-card-actions-right {
+          width: 100%;
+        }
       }
       .photo-card {
         break-inside: avoid;
-        margin-bottom: 0.9rem;
-        border: 1px solid #E5E7EB;
-        border-radius: 1rem;
+        margin-bottom: 0.18rem;
+        border: 0;
+        border-radius: 0;
         overflow: hidden;
-        background: #F9FAFB;
+        background: #111827;
+        position: relative;
+      }
+      .photo-gallery.photo-gallery-ordered .photo-card {
+        margin-bottom: 0;
+      }
+      .photo-card-draggable {
+        cursor: grab;
+      }
+      .photo-card-draggable.dragging {
+        opacity: 0.45;
+        filter: saturate(0.8);
+      }
+      .photo-card.photo-card-drop-target {
+        box-shadow: inset 0 0 0 2px rgba(96, 165, 250, 0.85);
+        z-index: 1;
+      }
+      .photo-card.photo-card-drop-target::before,
+      .photo-card.photo-card-drop-target::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 0.22rem;
+        background: transparent;
+        z-index: 3;
+      }
+      .photo-card.photo-card-drop-target-before::before {
+        top: 0;
+        background: linear-gradient(90deg, #2563EB, #60A5FA);
+      }
+      .photo-card.photo-card-drop-target-after::after {
+        bottom: 0;
+        background: linear-gradient(90deg, #2563EB, #60A5FA);
       }
       .photo-thumb-wrap {
         position: relative;
-        background: #E5E7EB;
+        background: #111827;
       }
       .photo-thumb {
         display: block;
         width: 100%;
-        max-height: 360px;
+        min-height: 180px;
+        max-height: none;
         object-fit: cover;
         background: #E5E7EB;
+        transition: transform 0.22s ease, filter 0.22s ease;
+      }
+      .photo-card:hover .photo-thumb,
+      .photo-card:focus-within .photo-thumb {
+        transform: scale(1.015);
+        filter: brightness(0.92);
+      }
+      .photo-card-overlay {
+        position: absolute;
+        inset: auto 0 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.28rem;
+        padding: 0.85rem 0.8rem 0.78rem;
+        background: linear-gradient(180deg, rgba(17, 24, 39, 0) 0%, rgba(17, 24, 39, 0.78) 62%, rgba(17, 24, 39, 0.92) 100%);
+        color: #FFFFFF;
+        pointer-events: none;
+      }
+      .photo-card-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        line-height: 1.2;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.42);
+      }
+      .photo-card-hover-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.28rem;
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.84);
+        opacity: 0;
+        transform: translateY(0.2rem);
+        transition: opacity 0.16s ease, transform 0.16s ease;
+      }
+      .photo-card:hover .photo-card-hover-meta,
+      .photo-card:focus-within .photo-card-hover-meta,
+      .photo-card.photo-card-drop-target .photo-card-hover-meta {
+        opacity: 1;
+        transform: translateY(0);
       }
       .photo-delete-btn {
         position: absolute;
-        top: 0.65rem;
-        right: 0.65rem;
-        border: 0;
+        top: 0.6rem;
+        right: 0.6rem;
+        width: 2rem;
+        height: 2rem;
+        border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 999px;
-        padding: 0.5rem 0.75rem;
+        padding: 0;
         background: rgba(17, 24, 39, 0.72);
         color: #FFFFFF;
-        font-size: 0.76rem;
-        font-weight: 700;
         cursor: pointer;
-        transition: background 0.15s;
+        transition: background 0.15s, border-color 0.15s, transform 0.15s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
       }
-      .photo-delete-btn:hover { background: rgba(17, 24, 39, 0.88); }
+      .photo-card:hover .photo-delete-btn,
+      .photo-card:focus-within .photo-delete-btn,
+      .photo-delete-btn.confirm,
+      .photo-delete-btn:disabled {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      @media (hover: none) {
+        .photo-delete-btn {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      }
+      .photo-delete-btn:hover {
+        background: rgba(17, 24, 39, 0.88);
+        transform: translateY(-1px);
+      }
       .photo-delete-btn.confirm { background: #DC2626; }
-      .photo-card-body {
-        padding: 0.75rem 0.85rem 0.85rem;
-      }
-      .photo-date {
-        font-size: 0.8rem;
-        color: #6B7280;
-      }
-      .photo-submeta {
-        margin-top: 0.3rem;
-        font-size: 0.74rem;
-        color: #9CA3AF;
-        word-break: break-word;
+      .photo-delete-btn.confirm:hover { background: #B91C1C; }
+      .photo-order-hint {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #93C5FD;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
       .photo-empty {
         padding: 2.75rem 1rem;
@@ -527,8 +824,6 @@ const studioMeta = getStudioMeta();
         padding: 0 1rem 1.25rem;
       }
       .portal-meta {
-        max-width: 820px;
-        margin: 0 auto;
         display: flex;
         justify-content: center;
         gap: 0.5rem;
@@ -550,26 +845,31 @@ const studioMeta = getStudioMeta();
   </head>
   <body>
     <header class="topbar">
-      <div class="topbar-left">
-        <img src="/app-icon.svg" alt="Clover" />
-        <div>
-          <div class="topbar-title">{STUDIO_NAME}</div>
-          <div class="topbar-subtitle">{STUDIO_SUBTITLE}</div>
+      <div class={portalContainerClass}>
+        <div class="topbar-row">
+          <div class="topbar-primary">
+            <div class="topbar-left">
+              <img src="/app-icon.svg" alt="Clover" />
+              <div class="topbar-brand">
+                <div class="topbar-title">{STUDIO_NAME}</div>
+              </div>
+            </div>
+            <nav class="topbar-nav" aria-label="Clover Studio sections">
+              <a class={`topbar-nav-link ${active === 'offers' ? 'active' : ''}`} href="/partner-portal/offers" aria-current={active === 'offers' ? 'page' : undefined}>Offers</a>
+              <a class={`topbar-nav-link ${active === 'photos' ? 'active' : ''}`} href="/partner-portal/photos" aria-current={active === 'photos' ? 'page' : undefined}>Photos</a>
+            </nav>
+          </div>
+          <button class="signout-btn" id="signout-btn">Sign out</button>
         </div>
       </div>
-      <button class="signout-btn" id="signout-btn">Sign out</button>
     </header>
 
-    <main class="main">
-      <nav class="view-tabs" aria-label="Clover Studio views">
-        <a class={`view-tab ${active === 'offers' ? 'active' : ''}`} href="/partner-portal/offers" aria-current={active === 'offers' ? 'page' : undefined}>Offers</a>
-        <a class={`view-tab ${active === 'photos' ? 'active' : ''}`} href="/partner-portal/photos" aria-current={active === 'photos' ? 'page' : undefined}>Photos</a>
-      </nav>
+    <main class={`main ${portalContainerClass}`}>
       <slot />
     </main>
 
     <footer class="portal-footer" aria-label="Page version information">
-      <div class="portal-meta">
+      <div class={`portal-meta ${portalContainerClass}`}>
         {studioMeta.updatedLabel && (
           <span class="portal-meta-updated" title={studioMeta.updatedTooltip ?? undefined}>
             {studioMeta.updatedLabel}

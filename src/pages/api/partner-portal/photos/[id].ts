@@ -37,6 +37,22 @@ function parseStorageObjectRef(rawUrl: string): StorageObjectRef | null {
   }
 }
 
+function isMissingDisplayOrderColumn(message: string | undefined) {
+  return (message ?? '').includes('column place_photos.display_order does not exist');
+}
+
+async function updatePhotoDisplayOrders(placeId: string, photoIds: string[]) {
+  const results = await Promise.all(
+    photoIds.map((id, index) => supabaseAdmin
+      .from('place_photos')
+      .update({ display_order: index })
+      .eq('id', id)
+      .eq('place_id', placeId))
+  );
+
+  return results.find(result => result.error)?.error ?? null;
+}
+
 export const DELETE: APIRoute = async ({ params, cookies }) => {
   const user = await getUser(cookies);
   if (!user) {
@@ -50,7 +66,7 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
 
   const { data: photo, error: photoError } = await supabaseAdmin
     .from('place_photos')
-    .select('id, url')
+    .select('id, url, place_id')
     .eq('id', id)
     .maybeSingle();
 
@@ -98,6 +114,33 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
 
   if (auditError) {
     console.error('Insert deletion audit error:', auditError);
+  }
+
+  const { data: remainingPhotos, error: remainingError } = await supabaseAdmin
+    .from('place_photos')
+    .select('id, created_at, display_order')
+    .eq('place_id', photo.place_id);
+
+  if (remainingError) {
+    if (!isMissingDisplayOrderColumn(remainingError.message)) {
+      console.error('Load remaining place photos error:', remainingError);
+    }
+  } else if ((remainingPhotos ?? []).length > 0) {
+    const orderedRemaining = [...remainingPhotos].sort((a, b) => {
+      const aOrder = typeof a.display_order === 'number' ? a.display_order : Number.MAX_SAFE_INTEGER;
+      const bOrder = typeof b.display_order === 'number' ? b.display_order : Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    const reorderError = await updatePhotoDisplayOrders(
+      photo.place_id,
+      orderedRemaining.map(item => item.id)
+    );
+
+    if (reorderError) {
+      console.error('Renumber remaining place photos error:', reorderError);
+    }
   }
 
   return new Response(null, { status: 204 });
