@@ -38,22 +38,31 @@ const categoryColour = (cat: string) =>
         {posts.map((post) => (
           <a
             href={`/blog/${post.slug}`}
-            class="card p-6 hover:shadow-md transition-shadow block group"
+            class="card overflow-hidden hover:shadow-md transition-shadow block group"
           >
-            <div class="flex items-center gap-3 mb-3">
-              <span class={`text-xs font-semibold px-3 py-1 rounded-full ${categoryColour(post.data.category)}`}>
-                {categoryLabel(post.data.category)}
-              </span>
-              <span class="text-xs text-neutral-500">
-                {post.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </span>
+            {post.data.heroImage && (
+              <img
+                src={post.data.heroImage}
+                alt={post.data.title}
+                class="w-full h-44 object-cover"
+              />
+            )}
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-3">
+                <span class={`text-xs font-semibold px-3 py-1 rounded-full ${categoryColour(post.data.category)}`}>
+                  {categoryLabel(post.data.category)}
+                </span>
+                <span class="text-xs text-neutral-500">
+                  {post.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+              <h2 class="text-lg font-bold text-neutral-900 mb-2 group-hover:text-brand-pink transition-colors">
+                {post.data.title}
+              </h2>
+              <p class="text-sm text-neutral-600 leading-relaxed">
+                {post.data.description}
+              </p>
             </div>
-            <h2 class="text-lg font-bold text-neutral-900 mb-2 group-hover:text-brand-pink transition-colors">
-              {post.data.title}
-            </h2>
-            <p class="text-sm text-neutral-600 leading-relaxed">
-              {post.data.description}
-            </p>
           </a>
         ))}
       </div>

@@ -9,9 +9,10 @@ interface Props {
   description: string;
   pubDate: Date;
   category: 'location-guide' | 'venue-guide';
+  heroImage?: string;
 }
 
-const { title, description, pubDate, category } = Astro.props;
+const { title, description, pubDate, category, heroImage } = Astro.props;
 
 const categoryLabel = category === 'location-guide' ? 'Location Guide' : 'Venue Guide';
 const categoryColour = category === 'location-guide'
@@ -42,6 +43,16 @@ const formattedDate = pubDate.toLocaleDateString('en-GB', {
           </h1>
           <p class="text-sm text-neutral-500">{formattedDate}</p>
         </div>
+
+        {heroImage && (
+          <div class="mb-10 rounded-2xl overflow-hidden">
+            <img
+              src={heroImage}
+              alt={title}
+              class="w-full h-64 md:h-80 object-cover"
+            />
+          </div>
+        )}
 
         <!-- Article body -->
         <article class="prose prose-neutral max-w-none

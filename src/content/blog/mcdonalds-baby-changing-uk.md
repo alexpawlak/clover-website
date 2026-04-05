@@ -4,6 +4,7 @@ description: "The short answer is yes, most UK McDonald's have baby changing tab
 pubDate: 2026-04-05
 category: venue-guide
 brand: McDonald's
+heroImage: /images/blog/baby-blue-eyes.jpg
 ---
 
 If you're out with a baby and you need a changing table fast, McDonald's is often the first place you think of. They're everywhere, they're usually open, and you don't have to buy anything to use the toilets. So do they actually have baby changing facilities?

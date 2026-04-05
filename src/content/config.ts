@@ -9,6 +9,7 @@ const blog = defineCollection({
     category: z.enum(['location-guide', 'venue-guide']),
     city: z.string().optional(),
     brand: z.string().optional(),
+    heroImage: z.string().optional(),
     draft: z.boolean().default(false),
   }),
 });

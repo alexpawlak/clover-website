@@ -4,6 +4,7 @@ description: "A practical guide for parents navigating baby changing facilities 
 pubDate: 2026-04-05
 category: location-guide
 city: London
+heroImage: /images/blog/sleeping-baby.jpg
 ---
 
 London is a brilliant city to explore with a baby. It has loads to offer, and most of the big spots are genuinely well set up for families. That said, if you've ever found yourself wandering through a tube station at 11am with a screaming, very wet baby, you'll know that "mostly well set up" isn't always enough.
