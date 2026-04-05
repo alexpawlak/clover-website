@@ -24,3 +24,7 @@ pnpm-debug.log*
 
 # project documentation
 PROJECT SUMMARY.md
+
+# git worktrees
+.worktrees/
+.superpowers/
