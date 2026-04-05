@@ -1,0 +1,65 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const categoryLabel = (cat: string) =>
+  cat === 'location-guide' ? 'Location Guide' : 'Venue Guide';
+
+const categoryColour = (cat: string) =>
+  cat === 'location-guide'
+    ? 'bg-brand-pink/10 text-brand-pink'
+    : 'bg-amenity-blue-light/40 text-amenity-blue-dark';
+---
+
+<BaseLayout
+  title="Baby Changing Tips & UK Location Guides — Clover Blog"
+  description="Guides for parents finding baby changing tables and family facilities across the UK."
+>
+  <Header />
+
+  <main class="py-16">
+    <div class="container-custom">
+
+      <div class="max-w-2xl mx-auto mb-12 text-center">
+        <h1 class="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">
+          The Clover Blog
+        </h1>
+        <p class="text-lg text-neutral-600">
+          Practical guides for parents finding baby-friendly facilities across the UK.
+        </p>
+      </div>
+
+      <div class="max-w-2xl mx-auto flex flex-col gap-6">
+        {posts.map((post) => (
+          <a
+            href={`/blog/${post.slug}`}
+            class="card p-6 hover:shadow-md transition-shadow block group"
+          >
+            <div class="flex items-center gap-3 mb-3">
+              <span class={`text-xs font-semibold px-3 py-1 rounded-full ${categoryColour(post.data.category)}`}>
+                {categoryLabel(post.data.category)}
+              </span>
+              <span class="text-xs text-neutral-500">
+                {post.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            </div>
+            <h2 class="text-lg font-bold text-neutral-900 mb-2 group-hover:text-brand-pink transition-colors">
+              {post.data.title}
+            </h2>
+            <p class="text-sm text-neutral-600 leading-relaxed">
+              {post.data.description}
+            </p>
+          </a>
+        ))}
+      </div>
+
+    </div>
+  </main>
+
+  <Footer />
+</BaseLayout>
