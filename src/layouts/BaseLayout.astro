@@ -4,14 +4,17 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description?: string;
+  image?: string;
 }
 
-const { 
-  title, 
-  description = 'Clover - Find baby changing places near you. Discover family-friendly facilities including changing tables, nursing rooms, and more.' 
+const {
+  title,
+  description = 'Clover - Find baby changing places near you. Discover family-friendly facilities including changing tables, nursing rooms, and more.',
+  image = '/og-default.png',
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL(image, Astro.site);
 ---
 
 <!doctype html>
@@ -30,12 +33,19 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content={title} />
+    <meta property="og:site_name" content="Clover" />
+    <meta property="og:locale" content="en_GB" />
+
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content={canonicalURL} />
     <meta property="twitter:title" content={title} />
     <meta property="twitter:description" content={description} />
+    <meta property="twitter:image" content={ogImage} />
+
+    <slot name="head" />
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

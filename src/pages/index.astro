@@ -7,7 +7,20 @@ import Features from '../components/Features.astro';
 import AppStoreButtons from '../components/AppStoreButtons.astro';
 ---
 
-<BaseLayout title="Clover - Find Baby Changing Places Near You">
+<BaseLayout
+  title="Clover — Find Baby Changing Tables & Nursing Rooms Near You"
+  description="Clover helps parents find baby changing tables, nursing rooms, and family-friendly facilities on an interactive map. Free iOS app, powered by the community."
+>
+  <script is:inline slot="head" type="application/ld+json">{JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Clover",
+    "description": "Find baby changing tables, nursing rooms, and family-friendly facilities near you.",
+    "operatingSystem": "iOS",
+    "applicationCategory": "TravelApplication",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" },
+    "url": "https://clover-babymap.netlify.app"
+  })}</script>
   <Header />
   
   <main>

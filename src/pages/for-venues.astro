@@ -5,9 +5,17 @@ import Footer from '../components/Footer.astro';
 ---
 
 <BaseLayout
-  title="For Venues — Clover"
-  description="Make your venue visible to parents searching for baby-friendly facilities. List your changing tables, nursing rooms, and family amenities on Clover."
+  title="List Your Venue Free — Reach Parents on Clover"
+  description="Get your café, restaurant, or public space discovered by parents searching for baby changing tables, nursing rooms, and family restrooms. Free listing on Clover."
 >
+  <script is:inline slot="head" type="application/ld+json">{JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "name": "Clover Venue Listing",
+    "description": "Free listing service for venues with baby-friendly facilities — changing tables, nursing rooms, family restrooms.",
+    "provider": { "@type": "Organization", "name": "Clover", "url": "https://clover-babymap.netlify.app" },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" }
+  })}</script>
   <Header />
 
   <main>
