@@ -6,7 +6,7 @@ const blog = defineCollection({
     title: z.string(),
     description: z.string(),
     pubDate: z.date(),
-    category: z.enum(['location-guide', 'venue-guide']),
+    category: z.enum(['location-guide', 'venue-guide', 'tips']),
     city: z.string().optional(),
     brand: z.string().optional(),
     heroImage: z.string().optional(),

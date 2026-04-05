@@ -8,16 +8,18 @@ interface Props {
   title: string;
   description: string;
   pubDate: Date;
-  category: 'location-guide' | 'venue-guide';
+  category: 'location-guide' | 'venue-guide' | 'tips';
   heroImage?: string;
 }
 
 const { title, description, pubDate, category, heroImage } = Astro.props;
 
-const categoryLabel = category === 'location-guide' ? 'Location Guide' : 'Venue Guide';
+const categoryLabel = category === 'location-guide' ? 'Location Guide' : category === 'venue-guide' ? 'Venue Guide' : 'Tips';
 const categoryColour = category === 'location-guide'
   ? 'bg-brand-pink/10 text-brand-pink'
-  : 'bg-amenity-blue-light/40 text-amenity-blue-dark';
+  : category === 'venue-guide'
+  ? 'bg-amenity-blue-light/40 text-amenity-blue-dark'
+  : 'bg-amenity-green-light/40 text-amenity-green-dark';
 
 const formattedDate = pubDate.toLocaleDateString('en-GB', {
   day: 'numeric',

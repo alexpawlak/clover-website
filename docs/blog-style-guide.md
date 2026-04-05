@@ -56,6 +56,7 @@ Bad: "Tips and Recommendations"
 ## Length
 
 - Location guides: 400-600 words
+- Tips articles: 400-500 words
 - Venue guides: 300-450 words
 
 Don't aim for a word count. Write what's useful and stop. Short and useful beats long and padded.
@@ -80,11 +81,37 @@ Use warm, realistic images of babies or parents in everyday situations. Avoid:
 - Images that look American (US plugs, American road signs, etc.)
 - Anything clinical or medical
 
-Available images in `/public/images/blog/`:
-- `sleeping-baby.jpg` — newborn sleeping, very warm and soft
-- `baby-blue-eyes.jpg` — baby chewing a block, engaging and cute
-- `baby-feet.jpg` — baby feet in white blanket, minimal and calm
-- `parent-baby-park.jpg` — mum with two young kids on a sofa
+**Each article must have its own unique hero image.** Don't reuse the same photo across multiple articles. Even if both images are of babies, the blog listing page looks repetitive when the same photo appears twice.
+
+**Match the image to the article topic.** A venue guide should show the context of that venue (a cafe, a shop, a motorway). A tips article about dads should feature a dad. Generic baby photos are a fallback only, not a first choice.
+
+### Sourcing new images
+
+[Unsplash](https://unsplash.com) and [Pexels](https://www.pexels.com) both offer free images with no attribution required (Unsplash licence / Pexels licence). Download the largest size available, save to `/public/images/blog/`, and use the filename as the `heroImage` path.
+
+Suggested searches by article type:
+
+| Article type | Search query |
+|---|---|
+| Coffee shop / cafe | `parent baby cafe`, `mum toddler coffee` |
+| Supermarket / retail | `family shopping baby`, `parent buggy store` |
+| Motorway / road trip | `family car journey baby`, `motorway driving` |
+| Train / public transport | `baby train`, `parent toddler train journey` |
+| Dads / fathers | `dad baby`, `father holding newborn` |
+| Parks / outdoors | `parent toddler park`, `family outdoor walk` |
+
+When previewing results, look for photos that feel like a moment caught, not posed. Dappled light, slightly messy, real. That's the tone.
+
+### Current images
+
+Available in `/public/images/blog/`:
+- `sleeping-baby.jpg` — newborn sleeping, very warm and soft — used by: London guide
+- `baby-blue-eyes.jpg` — baby chewing a block, engaging and cute — used by: McDonald's
+- `baby-feet.jpg` — baby feet in white blanket, minimal and calm — used by: dads tips
+- `parent-baby-park.jpg` — mum with kids on a sofa — used by: motorway tips
+- `parent-cafe.jpg` — parent with baby in a cafe — used by: Costa Coffee guide
+- `family-shopping.jpg` — parent/family in a large store — used by: IKEA guide
+- `parent-baby-train.jpg` — parent with baby on a train — used by: trains tips
 
 Set the `heroImage` frontmatter field to the image path, e.g. `/images/blog/sleeping-baby.jpg`.
 
@@ -97,7 +124,7 @@ Set the `heroImage` frontmatter field to the image path, e.g. `/images/blog/slee
 title: "Title that matches what parents search for"
 description: "One sentence that reads naturally, under 160 characters."
 pubDate: YYYY-MM-DD
-category: location-guide   # or venue-guide
+category: location-guide   # or venue-guide or tips
 city: London               # location-guide only
 brand: McDonald's          # venue-guide only
 heroImage: /images/blog/sleeping-baby.jpg
@@ -142,3 +169,5 @@ Style rules:
 - [ ] Does the title match how a parent would actually search for this?
 - [ ] Is there a natural Clover mention near the end?
 - [ ] Is `draft: false` set and `heroImage` assigned?
+- [ ] Is the hero image unique to this article (not used by any other article)?
+- [ ] Does the hero image relate to the article topic, not just "a baby photo"?
