@@ -7,13 +7,13 @@ import Footer from '../../components/Footer.astro';
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 
-const categoryLabel = (cat: string) =>
-  cat === 'location-guide' ? 'Location Guide' : 'Venue Guide';
+const [featuredPost, ...restPosts] = posts;
 
-const categoryColour = (cat: string) =>
-  cat === 'location-guide'
-    ? 'bg-brand-pink/10 text-brand-pink'
-    : 'bg-amenity-blue-light/40 text-amenity-blue-dark';
+const categoryLabel = (cat: string) => {
+  if (cat === 'location-guide') return 'Location Guide';
+  if (cat === 'venue-guide') return 'Venue Guide';
+  return 'Tips';
+};
 ---
 
 <BaseLayout
@@ -22,7 +22,7 @@ const categoryColour = (cat: string) =>
 >
   <Header />
 
-  <main class="py-16">
+  <main class="py-16 bg-brand-pink/5 min-h-screen">
     <div class="container-custom">
 
       <div class="max-w-2xl mx-auto mb-12 text-center">
@@ -34,38 +34,82 @@ const categoryColour = (cat: string) =>
         </p>
       </div>
 
-      <div class="max-w-2xl mx-auto flex flex-col gap-6">
-        {posts.map((post) => (
-          <a
-            href={`/blog/${post.slug}`}
-            class="card overflow-hidden hover:shadow-md transition-shadow block group"
-          >
-            {post.data.heroImage && (
-              <img
-                src={post.data.heroImage}
-                alt={post.data.title}
-                class="w-full h-44 object-cover"
-              />
-            )}
-            <div class="p-6">
+      {featuredPost && (
+        <a
+          href={`/blog/${featuredPost.slug}`}
+          class="block mb-10 rounded-2xl border border-brand-pink/20 shadow-md bg-gradient-to-br from-brand-pink-light/40 to-brand-pink-light/60 overflow-hidden group hover:shadow-lg transition-shadow"
+        >
+          <div class="flex flex-col md:flex-row">
+            <div class="md:w-56 w-full h-48 md:h-auto flex-shrink-0">
+              {featuredPost.data.heroImage ? (
+                <img
+                  src={featuredPost.data.heroImage}
+                  alt={featuredPost.data.title}
+                  class="w-full h-full object-cover"
+                />
+              ) : (
+                <div class="w-full h-full bg-brand-pink/20 min-h-[12rem] md:min-h-0" />
+              )}
+            </div>
+            <div class="p-6 md:p-8 flex flex-col justify-center">
               <div class="flex items-center gap-3 mb-3">
-                <span class={`text-xs font-semibold px-3 py-1 rounded-full ${categoryColour(post.data.category)}`}>
-                  {categoryLabel(post.data.category)}
+                <span class="text-xs font-semibold px-3 py-1 rounded-full bg-brand-pink/10 text-brand-pink">
+                  {categoryLabel(featuredPost.data.category)}
                 </span>
                 <span class="text-xs text-neutral-500">
-                  {post.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {featuredPost.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
               </div>
-              <h2 class="text-lg font-bold text-neutral-900 mb-2 group-hover:text-brand-pink transition-colors">
-                {post.data.title}
+              <h2 class="text-xl md:text-2xl font-bold text-neutral-900 mb-3 group-hover:text-brand-pink transition-colors">
+                {featuredPost.data.title}
               </h2>
-              <p class="text-sm text-neutral-600 leading-relaxed">
-                {post.data.description}
+              <p class="text-neutral-600 leading-relaxed mb-4">
+                {featuredPost.data.description}
               </p>
+              <span class="text-brand-pink font-semibold text-sm">Read more →</span>
             </div>
-          </a>
-        ))}
-      </div>
+          </div>
+        </a>
+      )}
+
+      {restPosts.length > 0 && (
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {restPosts.map((post) => (
+            <a
+              href={`/blog/${post.slug}`}
+              class="bg-white rounded-xl border border-brand-pink/10 shadow-sm overflow-hidden hover:shadow-md transition-shadow block group"
+            >
+              <div class="h-40 bg-brand-pink/10 overflow-hidden">
+                {post.data.heroImage ? (
+                  <img
+                    src={post.data.heroImage}
+                    alt={post.data.title}
+                    class="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div class="w-full h-full" />
+                )}
+              </div>
+              <div class="p-5">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-pink/10 text-brand-pink">
+                    {categoryLabel(post.data.category)}
+                  </span>
+                  <span class="text-xs text-neutral-500">
+                    {post.data.pubDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+                <h2 class="text-base font-bold text-neutral-900 mb-2 group-hover:text-brand-pink transition-colors leading-snug">
+                  {post.data.title}
+                </h2>
+                <p class="text-sm text-neutral-600 leading-relaxed line-clamp-2">
+                  {post.data.description}
+                </p>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
 
     </div>
   </main>
