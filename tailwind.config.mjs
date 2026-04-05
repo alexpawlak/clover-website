@@ -1,6 +1,13 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
+  safelist: [
+    'bg-brand-pink/10',        'text-brand-pink',
+    'bg-amenity-blue-dark/10', 'text-amenity-blue-dark',
+    'bg-amenity-green-dark/10','text-amenity-green-dark',
+    'bg-amenity-orange-dark/10','text-amenity-orange-dark',
+    'bg-brand-pink-dark/10',   'text-brand-pink-dark',
+  ],
   theme: {
     extend: {
       colors: {
