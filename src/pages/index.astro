@@ -15,7 +15,7 @@ import AppStoreButtons from '../components/AppStoreButtons.astro';
     <Features />
     
     <!-- How It Works Section -->
-    <section class="py-20 bg-gradient-to-br from-brand-pink-light/20 to-accent-violet/10">
+    <section class="py-20 bg-neutral-100">
       <div class="container-custom">
         <div class="text-center max-w-3xl mx-auto mb-16">
           <h2 class="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">
@@ -26,30 +26,36 @@ import AppStoreButtons from '../components/AppStoreButtons.astro';
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div class="text-center">
-            <div class="w-16 h-16 bg-brand-pink text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-start gap-0">
+
+          <div class="text-center flex-1 px-4">
+            <div class="w-16 h-16 border-2 border-brand-pink text-brand-pink rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
               1
             </div>
             <h3 class="text-xl font-semibold text-neutral-900 mb-2">Open the App</h3>
             <p class="text-neutral-600">Launch Clover and see nearby baby-friendly places on an interactive map</p>
           </div>
 
-          <div class="text-center">
-            <div class="w-16 h-16 bg-accent-violet text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+          <div class="hidden md:block h-px w-12 bg-neutral-300 flex-shrink-0 mt-8"></div>
+
+          <div class="text-center flex-1 px-4">
+            <div class="w-16 h-16 border-2 border-amenity-blue-dark text-amenity-blue-dark rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
               2
             </div>
             <h3 class="text-xl font-semibold text-neutral-900 mb-2">Find & Filter</h3>
             <p class="text-neutral-600">Search or filter by amenity type to find exactly what you need</p>
           </div>
 
-          <div class="text-center">
-            <div class="w-16 h-16 bg-amenity-green-dark text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+          <div class="hidden md:block h-px w-12 bg-neutral-300 flex-shrink-0 mt-8"></div>
+
+          <div class="text-center flex-1 px-4">
+            <div class="w-16 h-16 border-2 border-amenity-green-dark text-amenity-green-dark rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">
               3
             </div>
             <h3 class="text-xl font-semibold text-neutral-900 mb-2">Navigate & Go</h3>
             <p class="text-neutral-600">Get directions and visit with confidence knowing what to expect</p>
           </div>
+
         </div>
       </div>
     </section>
