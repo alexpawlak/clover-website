@@ -42,7 +42,7 @@
   }
 
   .btn-secondary {
-    @apply bg-accent-violet text-white px-6 py-3 rounded-xl font-medium hover:bg-accent-violet-dark transition-colors duration-200 inline-flex items-center justify-center;
+    @apply bg-amenity-blue-dark text-white px-6 py-3 rounded-xl font-medium hover:bg-amenity-blue-dark/80 transition-colors duration-200 inline-flex items-center justify-center;
   }
 
   .btn-outline {
